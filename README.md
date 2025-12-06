@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/weather-forecast-card-simple.png" alt="Weather Forecast Card" height="250" width="400" style="border-radius: 12px;">
+  <img src="https://raw.githubusercontent.com/troinine/ha-weather-forecast-card/refs/heads/main/docs/weather-forecast-card-simple.png" alt="Weather Forecast Card" height="250" width="400" style="border-radius: 12px;">
 
   <h1>Weather Forecast Card</h1>
 
@@ -32,7 +32,7 @@ This card takes inspiration from [Weather Forecast Extended Card](https://github
 - **Sun times** - Visualize sunrise and sunset
 
 <p align="center">
-  <img src="docs/weather-forecast-card-scroll.gif" alt="Scrollable forecast" width="400" style="border-radius: 12px;">
+  <img src="https://raw.githubusercontent.com/troinine/ha-weather-forecast-card/refs/heads/main/docs/weather-forecast-card-scroll.gif" alt="Scrollable forecast" width="400" style="border-radius: 12px;">
 </p>
 
 ## Installation
