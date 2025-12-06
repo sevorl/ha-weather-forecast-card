@@ -78,7 +78,7 @@ jobs:
         with:
           tag_name: ${{ steps.version_check.outputs.VERSION }}
           files: dist/weather-forecast-card.js
-          generate_release_notes: false
+          generate_release_notes: true
 
       - name: Bump to next development version
         run: |
