@@ -58,7 +58,7 @@ export class WfcForecastSimple extends LitElement {
           currentDay = forecastDay;
           forecastTemplates.push(
             html`<div class="wfc-day-indicator-container">
-              <div class="wfc-day-indicator">${forecastDay}</div>
+              <div class="wfc-day-indicator wfc-label">${forecastDay}</div>
             </div>`
           );
         }
