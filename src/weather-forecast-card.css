@@ -37,6 +37,7 @@
 }
 
 ha-card {
+  position: relative;
   box-sizing: border-box;
   display: block;
   width: 100%;
@@ -45,7 +46,9 @@ ha-card {
 }
 
 .wfc-container {
+  position: relative;
   box-sizing: border-box;
+  z-index: 1;
   border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
   max-width: 100%;
   width: 100%;
@@ -127,7 +130,6 @@ ha-card {
     rgba(0, 0, 0, 1) calc(100% - var(--fade-width)),
     rgba(0, 0, 0, 0) 100%
   );
-
   pointer-events: auto;
   -webkit-mask: var(--mask);
   mask: var(--mask);

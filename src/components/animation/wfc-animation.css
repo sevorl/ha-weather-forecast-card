@@ -1,0 +1,473 @@
+:host {
+  --sun-size: var(--wfc-effects-sun-size, 140px);
+  --sun-spin-duration: var(--wfc-effects-sun-spin-duration, 100s);
+  --moon-size: var(--wfc-effects-moon-size, 80px);
+  --sky-visibility: var(--wfc-effects-sky-visibility, visible);
+  --drop-color-start: color-mix(in srgb, var(--rain-color), transparent 100%);
+  --drop-color-end: color-mix(in srgb, var(--rain-color), transparent 40%);
+  --drop-height: var(--wfc-effects-drop-height, 20px);
+  --drop-start-pos-diff-y: 50px;
+  --snow-glow-color: var(--snow-color);
+  --container-height: 0px; /* Set dynamically in TS */
+
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  box-sizing: border-box;
+  border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
+}
+
+:host(.light) {
+  --sun-color: var(--wfc-effects-sun-color, #facc15);
+  --sun-ray-color: var(--wfc-effects-sun-ray-color, rgba(253, 224, 71, 0.4));
+  --sun-ray-opacity: 0.25;
+  --moon-color: var(--wfc-effects-moon-color, rgba(220, 220, 230, 1));
+  --star-color: var(--wfc-effects-star-color, #ffffff);
+  --snow-color: var(--wfc-effects-snow-color, #cbd5e1);
+  --glow-intensity: 0.9;
+  --rain-color: var(--wfc-effects-rain-color, #2563eb);
+  --clear-sky-color: var(
+    --wfc-effects-clear-sky-color,
+    rgba(30, 130, 230, 0.6)
+  );
+  --clear-sky-accent: var(
+    --wfc-effects-clear-sky-accent,
+    rgba(100, 180, 240, 0.45)
+  );
+  --clear-sky-horizon: var(
+    --wfc-effects-clear-sky-horizon,
+    rgba(210, 235, 255, 0.3)
+  );
+  --clear-night-sky-color: var(
+    --wfc-effects-clear-night-sky-color,
+    rgba(49, 46, 129, 0.7)
+  );
+  --clear-night-sky-accent: var(
+    --wfc-effects-clear-night-sky-accent,
+    rgba(88, 28, 135, 0.55)
+  );
+  --clear-night-horizon: var(
+    --wfc-effects-clear-night-horizon,
+    rgba(236, 72, 153, 0.4)
+  );
+}
+
+:host(.dark) {
+  --sun-color: var(--wfc-effects-sun-color, #fbbf24);
+  --sun-ray-color: var(--wfc-effects-sun-ray-color, rgba(251, 191, 36, 0.5));
+  --sun-ray-opacity: 0.15;
+  --moon-color: var(--wfc-effects-moon-color, rgba(220, 220, 230, 1));
+  --star-color: var(--wfc-effects-star-color, #ffffff);
+  --snow-color: var(--wfc-effects-snow-color, #ffffff);
+  --glow-intensity: 0.6;
+  --rain-color: var(--wfc-effects-rain-color, #6cb4ee);
+  --clear-sky-color: var(--wfc-effects-clear-sky-color, rgba(3, 105, 161, 0.8));
+  --clear-sky-accent: var(
+    --wfc-effects-clear-sky-accent,
+    rgba(7, 89, 133, 0.6)
+  );
+  --clear-sky-horizon: var(
+    --wfc-effects-clear-sky-horizon,
+    rgba(12, 74, 110, 0.4)
+  );
+  --clear-night-sky-color: var(
+    --wfc-effects-clear-night-sky-color,
+    rgba(10, 15, 40, 0.85)
+  );
+  --clear-night-sky-accent: var(
+    --wfc-effects-clear-night-sky-accent,
+    rgba(20, 30, 80, 0.6)
+  );
+  --clear-night-horizon: var(
+    --wfc-effects-clear-night-horizon,
+    rgba(40, 25, 100, 0.4)
+  );
+}
+
+.snowflake-path {
+  position: absolute;
+  left: var(--pos-x);
+  top: -50px;
+  transform: rotate(var(--fall-angle, 0deg));
+  transform-origin: top center;
+}
+
+.snowflake {
+  position: absolute;
+  background: var(--snow-color);
+  width: var(--flake-size);
+  height: var(--flake-size);
+  border-radius: 50%;
+  opacity: var(--flake-opacity);
+  filter: blur(var(--flake-blur));
+  box-shadow:
+    0 0 1px var(--snow-glow-color),
+    0 0 calc(var(--flake-shadow-spread) * var(--glow-intensity))
+      var(--snow-glow-color);
+  left: 0;
+  animation: snowflake var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.raindrop-path {
+  position: absolute;
+  left: var(--pos-x);
+  top: calc(-1 * var(--drop-height) - var(--drop-start-pos-diff-y));
+  transform: rotate(var(--fall-angle, 0deg));
+  transform-origin: top center;
+}
+
+.raindrop {
+  position: absolute;
+  width: 1px;
+  height: var(--drop-height);
+  background: linear-gradient(
+    to bottom,
+    var(--drop-color-start),
+    var(--drop-color-end)
+  );
+  border-radius: 1px;
+  left: 0;
+  top: 0;
+  animation: raindrop var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.splat {
+  content: "";
+  position: absolute;
+  width: 15px;
+  height: 10px;
+  border-top: 2px dotted rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  left: -7.5px;
+  top: calc(var(--landing-pos-y) + var(--drop-height) + 50px - 5px);
+  opacity: 1;
+  transform: scale(0);
+  animation: splat var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.lightning-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  bottom: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+  mix-blend-mode: overlay;
+  animation: lightning-loop 20s infinite;
+}
+
+.sky {
+  position: absolute;
+  visibility: var(--sky-visibility);
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    var(--clear-sky-color) 0%,
+    var(--clear-sky-accent) 55%,
+    var(--clear-sky-horizon) 100%
+  );
+}
+
+.sky::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at 65% 15%,
+    rgba(255, 255, 255, 0.25) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.sun {
+  position: absolute;
+  top: calc(var(--sun-size) * -0.95);
+  right: 35%;
+  transform: translateX(50%);
+  width: var(--sun-size);
+  height: var(--sun-size);
+  border-radius: 50%;
+  background: #f5fee0;
+  box-shadow:
+    0 0 20px 2px #fff7ed,
+    0 0 40px 10px var(--sun-color),
+    0 0 100px 30px rgba(253, 186, 116, 0.3);
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.1));
+}
+
+.sun-ray {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--sun-ray-color) 50%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 10% 10%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: top center;
+  opacity: var(--sun-ray-opacity);
+  box-shadow: 0 0 15px var(--sun-ray-color);
+}
+
+.ray-box {
+  position: absolute;
+  margin: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--sun-size);
+  animation: spin var(--sun-spin-duration) linear infinite;
+}
+
+.night-sky {
+  position: absolute;
+  visibility: var(--sky-visibility);
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    var(--clear-night-sky-color) 0%,
+    var(--clear-night-sky-accent) 50%,
+    var(--clear-night-horizon) 100%
+  );
+}
+
+.night-sky::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at 70% 20%,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.moon {
+  position: absolute;
+  top: calc(var(--moon-size) * -0.85);
+  right: 30%;
+  transform: translateX(50%);
+  width: var(--moon-size);
+  height: var(--moon-size);
+  border-radius: 50%;
+  background: var(--moon-color);
+  box-shadow:
+    0px 0px 25px 5px rgba(255, 255, 255, 0.2),
+    0px 0px 50px 15px rgba(200, 210, 255, 0.1);
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.1));
+}
+
+.star {
+  position: absolute;
+  background: var(--star-color);
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+  box-shadow: 0 0 3px 1px var(--star-color);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--star-opacity, 1);
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes snowflake {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  12.5% {
+    transform: translate3d(
+      calc(var(--drift-amplitude, 15px) * 0.707),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.125),
+      0
+    );
+  }
+  25% {
+    transform: translate3d(
+      var(--drift-amplitude, 15px),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.25),
+      0
+    );
+  }
+  37.5% {
+    transform: translate3d(
+      calc(var(--drift-amplitude, 15px) * 0.707),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.375),
+      0
+    );
+  }
+  50% {
+    transform: translate3d(
+      0,
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.5),
+      0
+    );
+  }
+  62.5% {
+    transform: translate3d(
+      calc(var(--drift-amplitude, 15px) * -0.707),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.625),
+      0
+    );
+  }
+  75% {
+    transform: translate3d(
+      calc(var(--drift-amplitude, 15px) * -1),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.75),
+      0
+    );
+  }
+  87.5% {
+    transform: translate3d(
+      calc(var(--drift-amplitude, 15px) * -0.707),
+      calc((var(--container-height) + var(--drop-start-pos-diff-y)) * 0.875),
+      0
+    );
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate3d(
+      0,
+      calc(var(--container-height) + var(--drop-start-pos-diff-y)),
+      0
+    );
+  }
+}
+
+@keyframes raindrop {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  65% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+    transform: translate3d(
+      0,
+      calc(var(--landing-pos-y) + var(--drop-start-pos-diff-y)),
+      0
+    );
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(
+      0,
+      calc(var(--landing-pos-y) + var(--drop-start-pos-diff-y)),
+      0
+    );
+  }
+}
+
+@keyframes splat {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  80% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  90% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lightning-loop {
+  /* Long pause (0% to 90%) */
+  0%,
+  90% {
+    opacity: 0;
+  }
+
+  /* FLASH 1: Instant On */
+  90.1% {
+    opacity: 0.4;
+  }
+  90.2% {
+    opacity: 0;
+  } /* Immediate off */
+
+  /* Short Pause */
+  90.3% {
+    opacity: 0;
+  }
+
+  /* FLASH 2: Big Crack (Instant On) */
+  90.4% {
+    opacity: 0.8;
+  }
+  90.7% {
+    opacity: 0.1;
+  } /* Slight fade out for "glow" */
+  91% {
+    opacity: 0;
+  }
+
+  /* Residual Flicker */
+  91.1% {
+    opacity: 0.3;
+  }
+  91.3% {
+    opacity: 0;
+  }
+
+  /* Stay dark until end */
+  100% {
+    opacity: 0;
+  }
+}

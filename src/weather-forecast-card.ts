@@ -40,6 +40,7 @@ import {
 import "./components/wfc-forecast-chart";
 import "./components/wfc-forecast-simple";
 import "./components/wfc-current-weather";
+import "./components/animation/wfc-animation-provider";
 
 const DEFAULT_CONFIG: Partial<WeatherForecastCardConfig> = {
   type: "custom:weather-forecast-card",
@@ -184,6 +185,14 @@ export class WeatherForecastCard extends LitElement {
 
     return html`
       <ha-card>
+        ${this.config.show_condition_effects
+          ? html`<wfc-animation-provider
+              .hass=${this.hass}
+              .weatherEntity=${stateObject}
+              .config=${this.config}
+              .currentForecast=${this._hourlyForecastData?.[0]}
+            ></wfc-animation-provider>`
+          : nothing}
         <div class="wfc-container">
           ${this.config.show_current
             ? html`<div

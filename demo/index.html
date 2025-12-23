@@ -7,7 +7,7 @@
     <style>
       :root {
         --primary-text-color: #fff;
-        --secondary-text-color: #5e5e5e;
+        --secondary-text-color: #929292;
         --ha-font-size-3xl: 28px;
         --ha-font-size-2xl: 24px;
         --ha-font-size-xl: 20px;
@@ -15,10 +15,22 @@
         --ha-font-size-m: 14px;
         --ha-line-height-condensed: 1.2;
         --ha-card-border-radius: 20px;
+        --ha-card-background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.1) 20%,
+          rgba(0, 0, 0, 0.01) 100%
+        );
         font-family: "Roboto", "Noto", sans-serif;
         color: var(--primary-text-color);
         --card-padding: 24px;
       }
+      .light-theme {
+        --primary-text-color: #141414;
+        --secondary-text-color: #5e5e5e;
+        --ha-card-background: #fff;
+        color: var(--primary-text-color);
+      }
+
       body {
         margin: 0;
         padding: 0;
@@ -28,20 +40,14 @@
         font-weight: 700;
         margin: 0 0 8px 0;
         letter-spacing: -0.5px;
+        color: #fff;
       }
       h3 {
-        color: var(--secondary-text-color);
+        color: #cecece;
         font-size: 20px;
         font-weight: 400;
         margin: 0 0 24px 0;
         text-align: center;
-      }
-      .tagline {
-        font-size: 16px;
-        color: var(--secondary-text-color);
-        margin: 0 0 16px 0;
-        max-width: 320px;
-        line-height: 1.5;
       }
       .features {
         display: flex;
@@ -50,7 +56,7 @@
       }
       .feature {
         font-size: 14px;
-        color: var(--secondary-text-color);
+        color: #cecece;
         display: flex;
         gap: 8px;
         text-align: left;
@@ -166,14 +172,32 @@
         box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.1);
         border-radius: 20px;
       }
+      .theme-toggle {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: white;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 1001;
+        transition: all 0.2s ease;
+      }
+      .theme-toggle:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
       .demo-card {
         display: block;
         width: 550px;
-        background: linear-gradient(
-          180deg,
-          rgba(0, 0, 0, 0.1) 20%,
-          rgba(0, 0, 0, 0.01) 100%
-        );
+        background: var(--ha-card-background);
         backdrop-filter: blur(20px) saturate(110%) brightness(90%);
         border-radius: 20px;
         border-width: 1px;
@@ -189,6 +213,22 @@
   </head>
   <body>
     <div class="view">
+      <button class="theme-toggle" id="theme-toggle">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="5" />
+          <path
+            d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M17.66 6.34l1.42-1.42"
+          />
+        </svg>
+        <span>Toggle Theme</span>
+      </button>
       <div class="dashboard">
         <div class="intro">
           <h1>Weather Forecast Card</h1>
@@ -287,7 +327,31 @@
       import { MockHass } from "../test/mocks/hass.ts";
 
       const mockHass = new MockHass();
-      const hass = mockHass.getHass();
+      let theme = "dark";
+      mockHass.darkMode = theme === "dark";
+      let hass = mockHass.getHass();
+      const demoMode = "toggle_and_scroll"; // 'condition_effects' | 'toggle_and_scroll' | 'none'
+
+      const updateTheme = () => {
+        const card = document.querySelector(".demo-card");
+        if (theme === "light") {
+          card.classList.add("light-theme");
+          document.body.classList.add("light-theme");
+        } else {
+          card.classList.remove("light-theme");
+          document.body.classList.remove("light-theme");
+        }
+        mockHass.darkMode = theme === "dark";
+        hass = mockHass.getHass();
+        card.hass = hass;
+      };
+
+      updateTheme();
+
+      document.getElementById("theme-toggle").addEventListener("click", () => {
+        theme = theme === "dark" ? "light" : "dark";
+        updateTheme();
+      });
 
       customElements.whenDefined("weather-forecast-card").then(() => {
         const card = document.querySelector(".demo-card");
@@ -296,16 +360,44 @@
           type: "custom:weather-forecast-card",
           entity: "weather.demo",
           name: "Home",
+          show_condition_effects: demoMode === "condition_effects",
           forecast: {
             mode: "chart",
             extra_attribute: "wind_direction",
             hourly_group_size: 2,
+            show_sun_times: demoMode !== "condition_effects",
           },
         });
+
         card.hass = hass;
 
-        // Auto-demo: tap, scroll, scroll back, tap sequence
-        setTimeout(() => {
+        const rotateConditionsDemo = () => {
+          const conditions = [
+            "sunny",
+            "snowy",
+            "rainy",
+            "lightning-rainy",
+            "clear-night",
+          ];
+          let index = 0;
+
+          setInterval(() => {
+            card.hass = {
+              ...hass,
+              states: {
+                ...hass.states,
+                "weather.demo": {
+                  ...hass.states["weather.demo"],
+                  state: conditions[index],
+                },
+              },
+            };
+
+            index = (index + 1) % conditions.length;
+          }, 20000);
+        };
+
+        const toggleAndScrollDemo = () => {
           const forecastContainer = card.shadowRoot?.querySelector(
             ".wfc-forecast-container"
           );
@@ -398,7 +490,13 @@
               "Could not find scroll container or forecast container"
             );
           }
-        }, 2000);
+        };
+
+        if (demoMode === "toggle_and_scroll") {
+          setTimeout(toggleAndScrollDemo, 2000);
+        } else if (demoMode === "condition_effects") {
+          setTimeout(rotateConditionsDemo, 2000);
+        }
       });
     </script>
   </body>
