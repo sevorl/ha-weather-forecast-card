@@ -87,9 +87,6 @@ export class WfcForecastChart extends LitElement {
   @property({ attribute: false }) itemWidth: number = 0;
   @query("canvas") private _canvas?: HTMLCanvasElement;
 
-  private _iconRaf = 0;
-  private _iconCleanup?: () => void;
-
   private _lastChartEvent: PointerEvent | null = null;
   private _chart: Chart | null = null;
   private _temperatureColors: Record<string, string> | null = null;
@@ -106,12 +103,6 @@ export class WfcForecastChart extends LitElement {
     super.disconnectedCallback();
     this._chart?.destroy();
     this._chart = null;
-    if (this._iconRaf) {
-      cancelAnimationFrame(this._iconRaf);
-      this._iconRaf = 0;
-    }
-    this._iconCleanup?.();
-    this._iconCleanup = undefined;
   }
 
   protected firstUpdated(): void {
@@ -137,9 +128,6 @@ export class WfcForecastChart extends LitElement {
         this.updateChartData(structuralChange);
       }
     }
-
-    this._ensureIconListeners();
-    this._scheduleIconUpdate();
   }
 
   render(): TemplateResult | typeof nothing {
@@ -746,67 +734,6 @@ export class WfcForecastChart extends LitElement {
     const gapValue = style.getPropertyValue("--forecast-item-gap").trim();
 
     return parseFloat(gapValue) || 0;
-  }
-
-  private _ensureIconListeners(): void {
-    if (this._iconCleanup) return;
-
-    const container = this._scrollContainer;
-    if (!container) return;
-
-    const onScroll = () => this._scheduleIconUpdate();
-    const onResize = () => this._scheduleIconUpdate();
-
-    container.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-
-    this._iconCleanup = () => {
-      container.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }
-
-  private _scheduleIconUpdate(): void {
-    if (this._iconRaf) {
-      cancelAnimationFrame(this._iconRaf);
-    }
-    this._iconRaf = requestAnimationFrame(() => this._updateIconPositions());
-  }
-
-  private _updateIconPositions(): void {
-    const container = this._scrollContainer;
-    if (!container) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const icons = container.querySelectorAll<HTMLElement>(
-      ".wfc-forecast-condition-span .wfc-condition-icon-sticky"
-    );
-
-    icons.forEach(icon => {
-      const span = icon.closest(
-        ".wfc-forecast-condition-span"
-      ) as HTMLElement | null;
-      if (!span) return;
-
-      const spanRect = span.getBoundingClientRect();
-      const iconWidth = icon.getBoundingClientRect().width || icon.offsetWidth || 48;
-
-      const spanStartInContainer = spanRect.left - containerRect.left;
-      const centerInContainer = spanStartInContainer + spanRect.width / 2;
-
-      const minCenter = iconWidth / 2;
-      const maxCenter = containerRect.width - iconWidth / 2;
-      const clampedCenter = Math.min(Math.max(centerInContainer, minCenter), maxCenter);
-
-      let offsetWithinSpan = clampedCenter - spanStartInContainer - iconWidth / 2;
-      
-      // Clamp offset to keep icon within span boundaries
-      const minOffset = 0;
-      const maxOffset = spanRect.width - iconWidth;
-      offsetWithinSpan = Math.min(Math.max(offsetWithinSpan, minOffset), maxOffset);
-      
-      icon.style.setProperty("--icon-offset", `${offsetWithinSpan}px`);
-    });
   }
 
   private _onPointerDown(event: PointerEvent) {
