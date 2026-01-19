@@ -329,7 +329,13 @@ export class WfcForecastSimple extends LitElement {
       const maxCenter = containerRect.width - iconWidth / 2;
       const clampedCenter = Math.min(Math.max(centerInContainer, minCenter), maxCenter);
 
-      const offsetWithinSpan = clampedCenter - spanStartInContainer - iconWidth / 2;
+      let offsetWithinSpan = clampedCenter - spanStartInContainer - iconWidth / 2;
+      
+      // Clamp offset to keep icon within span boundaries
+      const minOffset = 0;
+      const maxOffset = spanRect.width - iconWidth;
+      offsetWithinSpan = Math.min(Math.max(offsetWithinSpan, minOffset), maxOffset);
+      
       icon.style.setProperty("--icon-offset", `${offsetWithinSpan}px`);
     });
   }
