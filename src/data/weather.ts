@@ -458,12 +458,21 @@ export const aggregateHourlyForecastData = (
   let i = 0;
 
   while (i < forecast.length) {
-    const currentHour = new Date(forecast[i]!.datetime).getHours();
-    const remainder = currentHour % groupSize;
-    const steps = remainder === 0 ? groupSize : groupSize - remainder;
+    const startCondition = forecast[i]?.condition;
+    const group: ForecastAttribute[] = [];
 
-    const group = forecast.slice(i, i + steps);
-    i += group.length;
+    while (i < forecast.length && group.length < groupSize) {
+      const nextEntry = forecast[i];
+      if (!nextEntry) break;
+
+      // Stop grouping when the condition changes to keep spans condition-based
+      if (group.length > 0 && nextEntry.condition !== startCondition) {
+        break;
+      }
+
+      group.push(nextEntry);
+      i += 1;
+    }
 
     if (group.length === 0) continue;
     const temperatures = group.map((e) => e.temperature);
@@ -483,13 +492,18 @@ export const aggregateHourlyForecastData = (
       .map((e) => e.precipitation_probability)
       .filter((e): e is number => e !== undefined);
 
-    const lastEntryDate = new Date(group[group.length - 1]!.datetime);
-    lastEntryDate.setMinutes(59);
-    lastEntryDate.setSeconds(59);
+    const lastEntry = group[group.length - 1]!;
+    const lastEntryDate = lastEntry.groupEndtime
+      ? new Date(lastEntry.groupEndtime)
+      : new Date(lastEntry.datetime);
+    const nextEntry = forecast[i];
+    const endDate = nextEntry
+      ? new Date(nextEntry.datetime)
+      : lastEntryDate;
 
     const aggregatedEntry: ForecastAttribute = {
       datetime: group[0]!.datetime,
-      groupEndtime: lastEntryDate.toISOString(),
+      groupEndtime: endDate.toISOString(),
       condition: getWorstCondition(group),
       temperature: parseFloat(average(temperatures).toFixed(1)),
     };
