@@ -132,20 +132,27 @@ export const groupForecastByCondition = (
     return [];
   }
 
+  console.log('[GroupByCondition] Starting with forecast length:', forecast.length);
+
   const conditionSpans: ConditionSpan[] = [];
   let currentCondition = forecast[0]?.condition || "";
   let startIndex = 0;
   let currentIsNight = hass ? getSuntimesInfo(hass, forecast[0].datetime)?.isNightTime : false;
 
+  console.log(`[GroupByCondition] Initial: datetime=${forecast[0].datetime}, condition=${currentCondition}, isNight=${currentIsNight}`);
+
   for (let i = 1; i < forecast.length; i++) {
     const condition = forecast[i]?.condition || "";
     const isNight = hass ? getSuntimesInfo(hass, forecast[i].datetime)?.isNightTime : false;
+
+    console.log(`[GroupByCondition] i=${i}, datetime=${forecast[i].datetime}, condition=${condition}, isNight=${isNight}`);
 
     // Break grouping if condition changes OR day/night changes
     const conditionChanged = condition !== currentCondition;
     const dayNightChanged = isNight !== currentIsNight;
 
     if (conditionChanged || dayNightChanged) {
+      console.log(`[GroupByCondition] Split! conditionChanged=${conditionChanged}, dayNightChanged=${dayNightChanged}`);
       // End of current span, create entry
       conditionSpans.push({
         condition: currentCondition,
