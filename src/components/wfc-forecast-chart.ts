@@ -2,6 +2,7 @@ import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { DragScrollController } from "../controllers/drag-scroll-controller";
 import { formatDay, groupForecastByCondition } from "../helpers";
+import { getConditionColor } from "../data/condition-colors";
 import { styleMap } from "lit/directives/style-map.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { getRelativePosition } from "chart.js/helpers";
@@ -652,11 +653,16 @@ export class WfcForecastChart extends LitElement {
       const conditionSpan = conditionSpans.find(span => span.startIndex === index);
 
       if (conditionSpan) {
+        // Get background color for this condition
+        const useColors = this.config.forecast?.condition_colors ?? true;
+        const colors = useColors ? getConditionColor(item.condition, this.config.forecast?.condition_color_map) : {};
+        const bgStyle = colors.background ? `background-color: ${colors.background};` : '';
+        
         // Render condition bar spanning multiple slots
         spanRow.push(html`
           <div 
             class="wfc-forecast-condition-span" 
-            style="grid-column: span ${conditionSpan.count};"
+            style="grid-column: span ${conditionSpan.count}; ${bgStyle}"
           >
             <div class="wfc-condition-icon-sticky">
               <wfc-forecast-header-items

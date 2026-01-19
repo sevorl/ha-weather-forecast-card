@@ -32,14 +32,11 @@ export class WfcWeatherConditionIconProvider extends LitElement {
     const icon = this.getWeatherStateIcon();
     const tooltip = this.showTooltip ? this.getTooltipText() : "";
     
-    // Get condition colors if enabled (true by default)
+    // Only apply foreground color if configured
     const useColors = this.config.forecast?.condition_colors ?? true;
     const colors = useColors ? getConditionColor(this.state, this.config.forecast?.condition_color_map) : {};
     
     const style: Record<string, string> = {};
-    if (colors.background) {
-      style['background-color'] = colors.background;
-    }
     if (colors.foreground) {
       style['color'] = colors.foreground;
     }
