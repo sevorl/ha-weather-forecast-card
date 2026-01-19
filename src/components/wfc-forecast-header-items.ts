@@ -27,6 +27,7 @@ export class WfcForecastHeaderItems extends LitElement {
   @property({ attribute: false }) forecast!: ForecastAttribute;
   @property({ attribute: false }) forecastType!: ForecastType;
   @property({ attribute: false }) config!: WeatherForecastCardConfig;
+  @property({ attribute: false }) hideTime: boolean = false;
 
   private suntimesInfo?: SuntimesInfo | null;
 
@@ -62,9 +63,11 @@ export class WfcForecastHeaderItems extends LitElement {
         : false;
 
     return html`
-      <div class="wfc-forecast-slot-time wfc-label ${className || ""}">
-        ${label}
-      </div>
+      ${!this.hideTime ? html`
+        <div class="wfc-forecast-slot-time wfc-label ${className || ""}">
+          ${label}
+        </div>
+      ` : nothing}
       <wfc-weather-condition-icon-provider
         .hass=${this.hass}
         .config=${this.config}

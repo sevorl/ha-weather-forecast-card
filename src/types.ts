@@ -65,6 +65,7 @@ export interface WeatherForecastCardForecastConfig {
   scroll_to_selected?: boolean;
   use_color_thresholds?: boolean;
   temperature_precision?: number;
+  group_condition_icons?: boolean;
 }
 
 export interface WeatherForecastCardCurrentConfig {
@@ -123,4 +124,11 @@ export type SuntimesInfo = {
   sunrise: Date;
   sunset: Date;
   isNightTime: boolean;
+};
+
+export type ConditionSpan = {
+  condition: string;
+  startIndex: number;
+  endIndex: number;
+  count: number;
 };

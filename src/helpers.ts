@@ -2,7 +2,8 @@ import { HomeAssistant, TimeFormat } from "custom-card-helpers";
 import { STATE_NOT_RUNNING } from "home-assistant-js-websocket";
 import * as SunCalc from "suncalc";
 import memoizeOne from "memoize-one";
-import { SuntimesInfo } from "./types";
+import { ConditionSpan, SuntimesInfo } from "./types";
+import { ForecastAttribute } from "./data/weather";
 
 export const createWarningText = (
   hass: HomeAssistant | undefined,
@@ -114,4 +115,51 @@ export const endOfHour = (input: Date | string): Date => {
   d.setMinutes(59, 59, 999);
 
   return d;
+};
+
+/**
+ * Groups consecutive forecast items with the same weather condition.
+ * Similar to the lovelace-hourly-weather card's condition grouping.
+ *
+ * @param forecast - Array of forecast items to group
+ * @returns Array of condition spans with start/end indices and counts
+ */
+export const groupForecastByCondition = (
+  forecast: ForecastAttribute[]
+): ConditionSpan[] => {
+  if (!forecast || forecast.length === 0) {
+    return [];
+  }
+
+  const conditionSpans: ConditionSpan[] = [];
+  let currentCondition = forecast[0]?.condition || "";
+  let startIndex = 0;
+
+  for (let i = 1; i < forecast.length; i++) {
+    const condition = forecast[i]?.condition || "";
+
+    if (condition !== currentCondition) {
+      // End of current span, create entry
+      conditionSpans.push({
+        condition: currentCondition,
+        startIndex,
+        endIndex: i - 1,
+        count: i - startIndex,
+      });
+
+      // Start new span
+      currentCondition = condition;
+      startIndex = i;
+    }
+  }
+
+  // Add the final span
+  conditionSpans.push({
+    condition: currentCondition,
+    startIndex,
+    endIndex: forecast.length - 1,
+    count: forecast.length - startIndex,
+  });
+
+  return conditionSpans;
 };

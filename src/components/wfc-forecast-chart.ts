@@ -1,7 +1,7 @@
 import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { DragScrollController } from "../controllers/drag-scroll-controller";
-import { formatDay } from "../helpers";
+import { formatDay, groupForecastByCondition } from "../helpers";
 import { styleMap } from "lit/directives/style-map.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { getRelativePosition } from "chart.js/helpers";
@@ -565,6 +565,16 @@ export class WfcForecastChart extends LitElement {
   }
 
   private renderHeaderItems(forecast: ForecastAttribute[]): TemplateResult[] {
+    const useGroupedIcons = this.config.forecast?.group_condition_icons ?? false;
+
+    if (useGroupedIcons) {
+      return this.renderGroupedHeaderItems(forecast);
+    }
+
+    return this.renderStandardHeaderItems(forecast);
+  }
+
+  private renderStandardHeaderItems(forecast: ForecastAttribute[]): TemplateResult[] {
     const parts: TemplateResult[] = [];
     let currentDay: string | undefined;
 
@@ -598,6 +608,56 @@ export class WfcForecastChart extends LitElement {
     });
 
     return parts;
+  }
+
+  private renderGroupedHeaderItems(forecast: ForecastAttribute[]): TemplateResult[] {
+    const parts: TemplateResult[] = [];
+    let currentDay: string | undefined;
+    const conditionSpans = groupForecastByCondition(forecast);
+
+    forecast.forEach((item, index) => {
+      if (!item.datetime) {
+        return;
+      }
+
+      if (this.forecastType === "hourly") {
+        const forecastDay = formatDay(this.hass, item.datetime);
+        if (currentDay !== forecastDay) {
+          currentDay = forecastDay;
+          parts.push(
+            html`<div class="wfc-day-indicator-container">
+              <div class="wfc-day-indicator wfc-label">${forecastDay}</div>
+            </div>`
+          );
+        }
+      }
+
+      // Check if this is the start of a condition span
+      const conditionSpan = conditionSpans.find(span => span.startIndex === index);
+
+      if (conditionSpan) {
+        // Render condition bar spanning multiple slots
+        const spanWidth = `calc(${conditionSpan.count} * var(--forecast-item-width) + ${conditionSpan.count - 1} * var(--forecast-item-gap))`;
+
+        parts.push(html`
+          <div 
+            class="wfc-forecast-condition-span" 
+            style="width: ${spanWidth}; grid-column: span ${conditionSpan.count};"
+          >
+            <wfc-forecast-header-items
+              .hass=${this.hass}
+              .forecast=${item}
+              .forecastType=${this.forecastType}
+              .config=${this.config}
+              .hideTime=${true}
+            ></wfc-forecast-header-items>
+          </div>
+        `);
+      }
+    });
+
+    return parts;
+  }
   }
 
   /**
