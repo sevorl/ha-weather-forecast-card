@@ -37,8 +37,26 @@ export class WfcForecastSimple extends LitElement {
     childSelector: ".wfc-forecast-slot",
   });
 
+  private _iconRaf = 0;
+  private _iconCleanup?: () => void;
+
   protected createRenderRoot() {
     return this;
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._iconRaf) {
+      cancelAnimationFrame(this._iconRaf);
+      this._iconRaf = 0;
+    }
+    this._iconCleanup?.();
+    this._iconCleanup = undefined;
+  }
+
+  protected updated(): void {
+    this._ensureIconListeners();
+    this._scheduleIconUpdate();
   }
   render(): TemplateResult | typeof nothing {
     if (!this.forecast?.length) {
@@ -256,6 +274,65 @@ export class WfcForecastSimple extends LitElement {
 
     fireEvent(this, "action", actionDetails);
   };
+
+  private _ensureIconListeners(): void {
+    if (this._iconCleanup) return;
+
+    const container = this.querySelector(
+      ".wfc-scroll-container"
+    ) as HTMLElement | null;
+    if (!container) return;
+
+    const onScroll = () => this._scheduleIconUpdate();
+    const onResize = () => this._scheduleIconUpdate();
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    this._iconCleanup = () => {
+      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }
+
+  private _scheduleIconUpdate(): void {
+    if (this._iconRaf) {
+      cancelAnimationFrame(this._iconRaf);
+    }
+    this._iconRaf = requestAnimationFrame(() => this._updateIconPositions());
+  }
+
+  private _updateIconPositions(): void {
+    const container = this.querySelector(
+      ".wfc-scroll-container"
+    ) as HTMLElement | null;
+    if (!container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const icons = container.querySelectorAll<HTMLElement>(
+      ".wfc-forecast-condition-span .wfc-condition-icon-sticky"
+    );
+
+    icons.forEach(icon => {
+      const span = icon.closest(
+        ".wfc-forecast-condition-span"
+      ) as HTMLElement | null;
+      if (!span) return;
+
+      const spanRect = span.getBoundingClientRect();
+      const iconWidth = icon.getBoundingClientRect().width || icon.offsetWidth || 48;
+
+      const centerInContainer =
+        spanRect.left + spanRect.width / 2 - containerRect.left;
+
+      const minCenter = iconWidth / 2;
+      const maxCenter = containerRect.width - iconWidth / 2;
+      const clampedCenter = Math.min(Math.max(centerInContainer, minCenter), maxCenter);
+
+      const offset = clampedCenter - iconWidth / 2;
+      icon.style.setProperty("--icon-offset", `${offset}px`);
+    });
+  }
 }
 
 declare global {
