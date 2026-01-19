@@ -621,6 +621,19 @@ export class WfcForecastChart extends LitElement {
         return;
       }
 
+      // Check for day change and add day indicator to time row
+      if (this.forecastType === "hourly") {
+        const forecastDay = formatDay(this.hass, item.datetime);
+        if (currentDay !== forecastDay) {
+          currentDay = forecastDay;
+          timeRow.push(
+            html`<div class="wfc-day-indicator-container">
+              <div class="wfc-day-indicator wfc-label">${forecastDay}</div>
+            </div>`
+          );
+        }
+      }
+
       // Time label per hour (no icon)
       timeRow.push(html`
         <div class="wfc-forecast-slot">
@@ -634,18 +647,6 @@ export class WfcForecastChart extends LitElement {
           ></wfc-forecast-header-items>
         </div>
       `);
-
-      if (this.forecastType === "hourly") {
-        const forecastDay = formatDay(this.hass, item.datetime);
-        if (currentDay !== forecastDay) {
-          currentDay = forecastDay;
-          spanRow.push(
-            html`<div class="wfc-day-indicator-container">
-              <div class="wfc-day-indicator wfc-label">${forecastDay}</div>
-            </div>`
-          );
-        }
-      }
 
       // Check if this is the start of a condition span
       const conditionSpan = conditionSpans.find(span => span.startIndex === index);

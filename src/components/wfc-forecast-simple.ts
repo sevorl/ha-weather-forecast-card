@@ -68,6 +68,19 @@ export class WfcForecastSimple extends LitElement {
           return;
         }
 
+        // Check for day change and add day indicator
+        if (this.forecastType === "hourly") {
+          const forecastDay = formatDay(this.hass, forecast.datetime);
+          if (currentDay !== forecastDay) {
+            currentDay = forecastDay;
+            timeRow.push(
+              html`<div class="wfc-day-indicator-container">
+                <div class="wfc-day-indicator wfc-label">${forecastDay}</div>
+              </div>`
+            );
+          }
+        }
+
         // Time labels only
         timeRow.push(html`
           <div class="wfc-forecast-slot" data-index=${index}>
