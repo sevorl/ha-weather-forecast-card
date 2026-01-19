@@ -673,7 +673,12 @@ export class WfcForecastChart extends LitElement {
     return [
       html`<div class="wfc-forecast-grouped-wrapper">
         <div class="wfc-forecast-time-row">${timeRow}</div>
-        <div class="wfc-forecast-span-row">${spanRow}</div>
+        <div 
+          class="wfc-forecast-span-row"
+          style="grid-template-columns: repeat(${forecast.length}, var(--forecast-item-width));"
+        >
+          ${spanRow}
+        </div>
       </div>`,
     ];
   }
