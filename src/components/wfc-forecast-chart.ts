@@ -649,7 +649,7 @@ export class WfcForecastChart extends LitElement {
               .forecast=${item}
               .forecastType=${this.forecastType}
               .config=${this.config}
-              .hideTime=${true}
+              .hideTime=${false}
             ></wfc-forecast-header-items>
           </div>
         `);
