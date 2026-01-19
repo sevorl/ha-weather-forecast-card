@@ -14,7 +14,7 @@ import {
   ForecastType,
   getMaxPrecipitationForUnit,
   getWeatherUnit,
-  WeatherEntity,
+    if (useGroupedIcons) {
 } from "../data/weather";
 
 import "./wfc-forecast-header-items";
@@ -25,26 +25,26 @@ import "./wfc-forecast-info";
 export class WfcForecastSimple extends LitElement {
   @property({ attribute: false }) hass!: ExtendedHomeAssistant;
   @property({ attribute: false }) weatherEntity!: WeatherEntity;
-  @property({ attribute: false }) forecast: ForecastAttribute[] = [];
-  @property({ attribute: false }) forecastType!: ForecastType;
-  @property({ attribute: false }) config!: WeatherForecastCardConfig;
-
-  private _selectedForecastIndex: number | null = null;
-  private _scrollController = new DragScrollController(this, {
-    selector: ".wfc-scroll-container",
-    childSelector: ".wfc-forecast-slot",
-  });
-
-  protected createRenderRoot() {
-    return this;
-  }
-
-  render(): TemplateResult | typeof nothing {
-    if (!this.forecast?.length) {
-      return nothing;
-    }
-
-    const useGroupedIcons = this.config.forecast?.group_condition_icons ?? false;
+        // Condition spans
+        const conditionSpan = conditionSpans.find(span => span.startIndex === index);
+        if (conditionSpan) {
+          const spanWidth = `calc(${conditionSpan.count} * var(--forecast-item-width) + ${conditionSpan.count - 1} * var(--forecast-item-gap))`;
+          spanRow.push(html`
+            <div 
+              class="wfc-forecast-condition-span" 
+              style="width: ${spanWidth}; grid-column: span ${conditionSpan.count};"
+            >
+              <wfc-forecast-header-items
+                .hass=${this.hass}
+                .forecast=${forecast}
+                .forecastType=${this.forecastType}
+                .config=${this.config}
+                .hideTime=${true}
+                .hideIcon=${false}
+              ></wfc-forecast-header-items>
+            </div>
+          `);
+        }
     const forecastTemplates: TemplateResult[] = [];
     const maxPrecipitation = getMaxPrecipitationForUnit(
       getWeatherUnit(this.hass, this.weatherEntity, "precipitation"),
