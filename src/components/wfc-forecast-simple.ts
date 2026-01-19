@@ -9,6 +9,7 @@ import {
   WeatherForecastCardConfig,
 } from "../types";
 import { formatDay, groupForecastByCondition } from "../helpers";
+import { logger } from "../logger";
 import {
   ForecastAttribute,
   ForecastType,
@@ -57,6 +58,10 @@ export class WfcForecastSimple extends LitElement {
       const spanRow: TemplateResult[] = [];
       const detailRow: TemplateResult[] = [];
       const conditionSpans = groupForecastByCondition(this.forecast, this.hass);
+
+      logger.info(
+        `simple: grouping enabled, forecastType=${this.forecastType}, spans=${conditionSpans.length}, items=${this.forecast.length}`
+      );
 
       this.forecast.forEach((forecast, index) => {
         if (!forecast.datetime) {
