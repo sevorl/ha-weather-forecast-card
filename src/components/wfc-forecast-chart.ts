@@ -1,8 +1,8 @@
 import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { DragScrollController } from "../controllers/drag-scroll-controller";
-import { formatDay, groupForecastByCondition } from "../helpers";
-import { getConditionColor } from "../data/condition-colors";
+import { formatDay, getSuntimesInfo, groupForecastByCondition } from "../helpers";
+import { getConditionColorNightAware } from "../data/condition-colors";
 import { styleMap } from "lit/directives/style-map.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { getRelativePosition } from "chart.js/helpers";
@@ -655,7 +655,19 @@ export class WfcForecastChart extends LitElement {
       if (conditionSpan) {
         // Get background color for this condition
         const useColors = this.config.forecast?.condition_colors ?? true;
-        const colors = useColors ? getConditionColor(item.condition, this.config.forecast?.condition_color_map) : {};
+        const isNightTime =
+          this.forecastType === "hourly" &&
+          this.config.forecast?.show_sun_times
+            ? getSuntimesInfo(this.hass, item.datetime)?.isNightTime ?? false
+            : false;
+
+        const colors = useColors
+          ? getConditionColorNightAware(
+              item.condition,
+              isNightTime,
+              this.config.forecast?.condition_color_map
+            )
+          : {};
         const bgStyle = colors.background ? `background-color: ${colors.background};` : '';
         
         // Render condition bar spanning multiple slots
