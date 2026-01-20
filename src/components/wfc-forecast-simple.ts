@@ -1,5 +1,6 @@
 import { html, LitElement, nothing, TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { styleMap } from "lit/directives/style-map.js";
 import { ActionHandlerEvent, fireEvent } from "custom-card-helpers";
 import { actionHandler } from "../hass";
 import { DragScrollController } from "../controllers/drag-scroll-controller";
@@ -149,9 +150,18 @@ export class WfcForecastSimple extends LitElement {
         `);
       });
 
+      const count = this.forecast.length;
+      const gaps = Math.max(count - 1, 0);
+      const totalWidthCalc = `calc(${count} * var(--forecast-item-width) + ${gaps} * var(--forecast-item-gap))`;
+
+      const scrollContainerStyle = {
+        "--wfc-forecast-chart-width": totalWidthCalc,
+      };
+
       return html`
         <div
           class="wfc-forecast wfc-scroll-container"
+          style=${styleMap(scrollContainerStyle)}
           .actionHandler=${actionHandler({
             hasHold: this.config.forecast_action?.hold_action !== undefined,
             hasDoubleClick:
