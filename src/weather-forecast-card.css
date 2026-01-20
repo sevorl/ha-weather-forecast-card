@@ -319,6 +319,9 @@ ha-card {
   margin-right: calc(
     (var(--forecast-item-width) + var(--forecast-item-gap)) * -1
   );
+  /* Ensure the sticky element stays on top and maintains its stacking context */
+  background: inherit;
+  flex-shrink: 0;
 }
 
 .wfc-day-indicator {
