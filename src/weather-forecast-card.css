@@ -492,14 +492,6 @@ ha-card {
   width: 100%;
 }
 
-.wfc-forecast-grouped-rows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ha-space-2, 8px);
-  width: 100%;
-  position: relative;
-}
-
 .wfc-forecast-time-row {
   display: flex;
   flex-direction: row;
