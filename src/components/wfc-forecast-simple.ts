@@ -149,20 +149,32 @@ export class WfcForecastSimple extends LitElement {
         `);
       });
 
-      forecastTemplates.push(html`
-        <div class="wfc-forecast-grouped-wrapper">
-          <div class="wfc-forecast-grouped-rows">
-            <div class="wfc-forecast-time-row">${timeRow}</div>
-            <div 
-              class="wfc-forecast-span-row"
-              style="grid-template-columns: repeat(${this.forecast.length}, var(--forecast-item-width));"
-            >
-              ${spanRow}
+      return html`
+        <div
+          class="wfc-forecast wfc-scroll-container"
+          .actionHandler=${actionHandler({
+            hasHold: this.config.forecast_action?.hold_action !== undefined,
+            hasDoubleClick:
+              this.config.forecast_action?.double_tap_action !== undefined,
+            stopPropagation: true,
+          })}
+          @action=${this._onForecastAction}
+          @pointerdown=${this._onPointerDown}
+        >
+          <div class="wfc-forecast-grouped-wrapper">
+            <div class="wfc-forecast-grouped-rows">
+              <div class="wfc-forecast-time-row">${timeRow}</div>
+              <div 
+                class="wfc-forecast-span-row"
+                style="grid-template-columns: repeat(${this.forecast.length}, var(--forecast-item-width));"
+              >
+                ${spanRow}
+              </div>
+              <div class="wfc-forecast-row">${detailRow}</div>
             </div>
-            <div class="wfc-forecast-row">${detailRow}</div>
           </div>
         </div>
-      `);
+      `;
     } else {
       this.forecast.forEach((forecast, index) => {
         if (!forecast.datetime) {
