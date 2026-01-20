@@ -488,6 +488,7 @@ ha-card {
 .wfc-forecast-grouped-wrapper {
   display: flex;
   flex-direction: column;
+  gap: var(--ha-space-2, 8px);
   width: 100%;
 }
 
