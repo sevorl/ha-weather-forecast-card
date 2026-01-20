@@ -546,6 +546,7 @@ ha-card {
   z-index: 1;
   width: fit-content;
   max-width: 100%;
+  overflow: hidden;
 }
 
 .wfc-condition-label {
