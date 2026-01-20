@@ -307,34 +307,21 @@ ha-card {
 }
 
 .wfc-day-indicator-container {
+  display: flex;
+  justify-content: center;
+  align-items: start;
   position: sticky;
   left: 0px;
-  /* Stack day indicators on top of each other at the same position */
+  /* Use top to ensure proper stacking when multiple indicators are sticky */
   top: 0px;
   z-index: 4;
   pointer-events: none;
   min-width: var(--forecast-item-width);
   max-width: var(--forecast-item-width);
-  margin-right: calc((var(--forecast-item-width) + var(--forecast-item-gap)) * -1);
+  margin-right: calc(
+    (var(--forecast-item-width) + var(--forecast-item-gap)) * -1
+  );
   flex-shrink: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  /* Ensure stacking context */
-  contain: layout style paint;
-}
-
-/* Ensure day indicators maintain their background */
-.wfc-day-indicator-container::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: var(--ha-card-background, var(--card-background-color, white));
-  z-index: -1;
-  border-radius: inherit;
 }
 
 .wfc-day-indicator {
@@ -347,8 +334,8 @@ ha-card {
   border-radius: 12px;
   display: block;
   text-align: center;
-  white-space: nowrap;
-  pointer-events: auto;
+  /* Add a small shadow/backdrop so indicators are readable when they overlap */
+  box-shadow: 0 0 4px 2px var(--ha-card-background, var(--card-background-color, white));
 }
 
 .wfc-forecast-slot-time.wfc-sunrise {
