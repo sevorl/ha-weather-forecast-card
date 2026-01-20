@@ -2,8 +2,22 @@ import { HomeAssistant, TimeFormat } from "custom-card-helpers";
 import { STATE_NOT_RUNNING } from "home-assistant-js-websocket";
 import * as SunCalc from "suncalc";
 import memoizeOne from "memoize-one";
-import { ConditionSpan, SuntimesInfo } from "./types";
+import { ConditionSpan, ExtendedHomeAssistant, SuntimesInfo } from "./types";
 import { ForecastAttribute } from "./data/weather";
+
+/**
+ * Get localized weather condition name
+ */
+export const getLocalizedConditionName = (
+  hass: ExtendedHomeAssistant,
+  condition: string
+): string => {
+  const normalizedCondition = condition.toLowerCase().replace(/_/g, "-");
+  return (
+    hass.localize(`component.weather.entity_component._.state.${normalizedCondition}`) ||
+    condition
+  );
+};
 
 // Map condition to night-aware version for grouping
 const mapConditionForNight = (condition: string, isNightTime: boolean): string => {

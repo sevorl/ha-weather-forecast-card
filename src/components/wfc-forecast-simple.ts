@@ -9,7 +9,7 @@ import {
   ForecastActionDetails,
   WeatherForecastCardConfig,
 } from "../types";
-import { formatDay, getSuntimesInfo, groupForecastByCondition } from "../helpers";
+import { formatDay, getSuntimesInfo, groupForecastByCondition, getLocalizedConditionName } from "../helpers";
 import { getConditionColorNightAware } from "../data/condition-colors";
 import {
   ForecastAttribute,
@@ -111,6 +111,8 @@ export class WfcForecastSimple extends LitElement {
               )
             : {};
           const bgStyle = colors.background ? `background-color: ${colors.background};` : '';
+          const showLabels = this.config.forecast?.show_condition_labels ?? false;
+          const conditionLabel = showLabels ? getLocalizedConditionName(this.hass, forecast.condition || '') : '';
           
           spanRow.push(html`
             <div 
@@ -126,6 +128,9 @@ export class WfcForecastSimple extends LitElement {
                   .hideTime=${true}
                   .hideIcon=${false}
                 ></wfc-forecast-header-items>
+                ${showLabels && conditionLabel ? html`
+                  <span class="wfc-condition-label">${conditionLabel}</span>
+                ` : nothing}
               </div>
             </div>
           `);

@@ -303,6 +303,12 @@ export class WeatherForecastCardEditor
         optional: true,
       },
       {
+        name: "forecast.show_condition_labels",
+        selector: { boolean: {} },
+        default: false,
+        optional: true,
+      },
+      {
         name: "forecast.condition_colors",
         selector: { boolean: {} },
         default: true,
@@ -513,6 +519,11 @@ export class WeatherForecastCardEditor
           translateEditor("group_condition_icons", this.hass) ||
           "Group condition icons"
         );
+      case "forecast.show_condition_labels":
+        return (
+          translateEditor("show_condition_labels", this.hass) ||
+          "Show condition labels"
+        );
       case "forecast.condition_colors":
         return (
           translateEditor("condition_colors", this.hass) ||
@@ -576,6 +587,11 @@ export class WeatherForecastCardEditor
         return (
           translateEditor("group_condition_icons_helper", this.hass) ||
           "Use grouped condition icons when multiple entries share the same visual condition."
+        );
+      case "forecast.show_condition_labels":
+        return (
+          translateEditor("show_condition_labels_helper", this.hass) ||
+          "Display weather condition names next to icons in grouped mode. Labels are hidden if there is insufficient space."
         );
       case "forecast.condition_colors":
         return (

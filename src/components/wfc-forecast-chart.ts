@@ -1,7 +1,7 @@
 import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { DragScrollController } from "../controllers/drag-scroll-controller";
-import { formatDay, getSuntimesInfo, groupForecastByCondition } from "../helpers";
+import { formatDay, getSuntimesInfo, groupForecastByCondition, getLocalizedConditionName } from "../helpers";
 import { getConditionColorNightAware } from "../data/condition-colors";
 import { styleMap } from "lit/directives/style-map.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -668,6 +668,8 @@ export class WfcForecastChart extends LitElement {
             )
           : {};
         const bgStyle = colors.background ? `background-color: ${colors.background};` : '';
+        const showLabels = this.config.forecast?.show_condition_labels ?? false;
+        const conditionLabel = showLabels ? getLocalizedConditionName(this.hass, item.condition || '') : '';
         
         // Render condition bar spanning multiple slots
         spanRow.push(html`
@@ -684,6 +686,9 @@ export class WfcForecastChart extends LitElement {
                 .hideTime=${true}
                 .hideIcon=${false}
               ></wfc-forecast-header-items>
+              ${showLabels && conditionLabel ? html`
+                <span class="wfc-condition-label">${conditionLabel}</span>
+              ` : nothing}
             </div>
           </div>
         `);

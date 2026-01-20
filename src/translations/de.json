@@ -2,6 +2,8 @@
   "editor": {
     "group_condition_icons": "Wetter-Icons gruppieren",
     "group_condition_icons_helper": "Gruppierte Wettersymbole verwenden, wenn mehrere Vorhersageeinträge denselben visuellen Zustand haben.",
+    "show_condition_labels": "Zustandsbeschriftungen anzeigen",
+    "show_condition_labels_helper": "Zeigt Wetterzustandsnamen neben Icons im gruppierten Modus an. Beschriftungen werden ausgeblendet, wenn nicht genügend Platz vorhanden ist.",
     "condition_colors": "Zustandsfarben verwenden",
     "condition_colors_helper": "Hintergrund- und Symbolfarben basierend auf dem Wetterzustand aktivieren.",
     "condition_color_map": "Benutzerdefinierte Zustandsfarbzuordnung",
