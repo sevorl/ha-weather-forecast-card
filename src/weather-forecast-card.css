@@ -554,11 +554,12 @@ ha-card {
 }
 
 .wfc-condition-label {
-  font-size: var(--ha-font-size-m, 14px);
+  font-size: var(--ha-font-size-s, 12px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding-inline-start: var(--ha-space-1, 4px);
+  padding-inline-end: var(--ha-space-1, 4px);
   flex: 1 1 0;
   min-width: 0;
 }
