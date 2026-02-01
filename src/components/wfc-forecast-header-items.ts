@@ -16,9 +16,11 @@ import { ForecastAttribute, ForecastType } from "../data/weather";
 import {
   endOfHour,
   formatDay,
-  formatHour,
-  formatTime,
+  formatDayOfMonth,
+  formatHourParts,
+  formatTimeParts,
   getSuntimesInfo,
+  useAmPm,
 } from "../helpers";
 
 @customElement("wfc-forecast-header-items")
@@ -53,7 +55,7 @@ export class WfcForecastHeaderItems extends LitElement {
       return nothing;
     }
 
-    const { label, className } = this.getDateInfo();
+    const dateInfo = this.getDateInfo();
     const isNightTime =
       this.forecastType === "hourly" &&
       this.config.forecast?.show_sun_times &&
@@ -61,9 +63,20 @@ export class WfcForecastHeaderItems extends LitElement {
         ? this.suntimesInfo.isNightTime
         : false;
 
+    const hasTwoRows = dateInfo.secondaryLabel !== undefined;
+
     return html`
-      <div class="wfc-forecast-slot-time wfc-label ${className || ""}">
-        ${label}
+      <div
+        class="wfc-forecast-slot-time ${dateInfo.className || ""} ${hasTwoRows
+          ? "wfc-two-rows"
+          : ""}"
+      >
+        <span class="wfc-forecast-slot-time-primary">${dateInfo.label}</span>
+        ${hasTwoRows
+          ? html`<span class="wfc-forecast-slot-time-secondary"
+              >${dateInfo.secondaryLabel}</span
+            >`
+          : nothing}
       </div>
       <wfc-weather-condition-icon-provider
         .hass=${this.hass}
@@ -74,13 +87,27 @@ export class WfcForecastHeaderItems extends LitElement {
     `;
   }
 
-  private getDateInfo(): { label: string; className?: string } {
+  private getDateInfo(): {
+    label: string;
+    secondaryLabel?: string;
+    className?: string;
+  } {
+    // Use two-row layout only for 12-hour (AM/PM) clock format
+    const isAmPm = useAmPm(this.hass);
+
     if (this.forecastType !== "hourly") {
+      if (isAmPm) {
+        return {
+          label: formatDay(this.hass, this.forecast.datetime),
+          secondaryLabel: formatDayOfMonth(this.hass, this.forecast.datetime),
+        };
+      }
       return {
         label: formatDay(this.hass, this.forecast.datetime),
       };
     }
 
+    // Hourly view
     const startDate = new Date(this.forecast.datetime);
 
     const endDate = this.forecast.groupEndtime
@@ -115,13 +142,25 @@ export class WfcForecastHeaderItems extends LitElement {
       }
     }
 
-    const label = className
-      ? formatTime(this.hass, displayDate, true)
-      : formatHour(this.hass, displayDate, true);
+    // Sunrise/sunset times (with minutes)
+    if (className) {
+      const timeParts = formatTimeParts(this.hass, displayDate);
+      return {
+        label: timeParts.time,
+        secondaryLabel: isAmPm ? timeParts.suffix : undefined,
+        className,
+      };
+    }
 
-    return { label, className };
+    // Regular hourly forecast
+    const hourParts = formatHourParts(this.hass, displayDate);
+    return {
+      label: hourParts.hour,
+      secondaryLabel: isAmPm ? hourParts.suffix : undefined,
+    };
   }
 }
+
 declare global {
   interface HTMLElementTagNameMap {
     "wfc-forecast-header-items": WfcForecastHeaderItems;

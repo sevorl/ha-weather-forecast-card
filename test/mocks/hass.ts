@@ -167,6 +167,8 @@ export interface MockHassOptions {
   unitOfMeasurement?: "°C" | "°F";
   darkMode?: boolean;
   currentCondition?: string | null;
+  use12HourClock?: boolean;
+  language?: string;
 }
 
 export class MockHass {
@@ -491,10 +493,12 @@ export class MockHass {
         // Return undefined to let the component use fallback localization
         return undefined;
       },
-      language: "en",
+      language: this.options.language || "en",
       locale: {
-        language: "en",
-        time_format: TimeFormat.twenty_four,
+        language: this.options.language || "en",
+        time_format: this.options.use12HourClock
+          ? TimeFormat.am_pm
+          : TimeFormat.twenty_four,
         number_format: NumberFormat.comma_decimal,
       },
       connection: {
