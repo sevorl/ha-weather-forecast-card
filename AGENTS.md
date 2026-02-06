@@ -36,37 +36,28 @@ This is a **Home Assistant (HA) Custom Card** providing advanced weather visuali
 | :----------------------------- | :--------------------------------------------------------------------------------------------- |
 | `src/weather-forecast-card.ts` | **Entry Point.** The main Custom Element definition.                                           |
 | `src/editor/`                  | The visual editor logic for the HA UI (Lovelace editor).                                       |
-| `src/types.ts`                 | **Truth.** All interfaces for Config and Data. Keep this updated.                              |
-| `src/data/`                    | Transformers that convert HA entity state -> Chart.js datasets.                                |
-| `test/app/`                    | A mock application to run the card without a full HA instance.                                 |
+| `src/types.ts`                 | Public types for card configuration and other relevant data types                              |
+| `src/data/`                    | Data, namely weather related utility functions.                                                |
+| `test/`                        | Unit tests. And test app                                                                       |
+| `demo`                         | Demo app, can be ignored for now                                                               |
 | `README.md`                    | **Truth.** The main documentation for the card. Users refer to this when configuring the card. |
 
 ## 4. Development Workflow
 
-### Package Management
+Use **pnpm** exclusively.
 
-- Use **pnpm** exclusively.
-
-### Scripts
-
-- **Development:** `pnpm dev`
-  - Starts `parcel serve` with the Mock App.
-  - Opens at `http://localhost:1234`.
-  - _Agent Note:_ Use this to verify visual changes quickly.
-- **Build:** `pnpm build`
-  - Generates production artifacts in `./dist`.
-
-### Testing
-
-- Logic tests are located in `tests/`.
-- Run tests via `pnpm test` (if configured) or verify manually via the `test/app`.
+1. Implement changes (features, fixes, documentation etc.)
+2. Lint `pnpm lint`
+3. Write tests. Use vitest
+4. Run tests `pnpm test`
+5. Build `pnpn clean && pnpm build`
 
 ## 5. Coding Standards
 
 ### TypeScript
 
+- Strict typing.
 - **No `any`:** Use strict typing. If a type is unknown, use `unknown` and narrow it.
-- **Interfaces:** Define all relevant props and state objects in `src/types.ts`.
 
 ### Lit Components
 
@@ -74,17 +65,15 @@ This is a **Home Assistant (HA) Custom Card** providing advanced weather visuali
 - Render logic should be kept inside `render()`.
 - Complex data transformation should be memoized or handled in `willUpdate()` or `updated()`, not in `render()`.
 
-### Chart.js Integration
-
-- Destroy and recreate chart instances properly when the component disconnects to avoid memory leaks.
-- Use `ResizeObserver` if the chart needs to be responsive to card resizing.
-
 ## 6. Contribution Guidelines
 
 - **Commits:** Follow Conventional Commits (Angular convention).
   - `feat`: New visuals or config options.
   - `fix`: Rendering bugs or calculation errors.
   - `refactor`: internal cleanup (no visual change).
+  - `docs`: documentation changes.
+  - `test`: test-related changes.
+  - **Format:** Title only (max 80 chars). No body, no co-authored-by, no extra details.
 - **PRs:** Changes are strictly via Pull Requests.
 - **Refactoring:** Do not rewrite logic unless explicitly requested. maintain the existing directory structure.
 
