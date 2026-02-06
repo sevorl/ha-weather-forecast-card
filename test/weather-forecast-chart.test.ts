@@ -155,15 +155,15 @@ describe("weather-forecast-card chart", () => {
   });
 
   it("should toggle to hourly on tap and render hourly forecast items", async () => {
-    const forecastContainer = card.shadowRoot!.querySelector(
-      ".wfc-forecast-container"
-    );
-    expect(forecastContainer).not.toBeNull();
+    const chartElement = card.shadowRoot!.querySelector("wfc-forecast-chart");
+    expect(chartElement).not.toBeNull();
 
-    forecastContainer?.dispatchEvent(
-      new MouseEvent("click", {
+    // Dispatch action event directly (actionHandler directive doesn't work in test env)
+    chartElement?.dispatchEvent(
+      new CustomEvent("action", {
         bubbles: true,
-        cancelable: true,
+        composed: true,
+        detail: { action: "tap" },
       })
     );
 
@@ -575,5 +575,533 @@ describe("weather-forecast-card chart", () => {
     // @ts-expect-error private
     const chartInstance = chartElement._chart;
     expect(chartInstance?.data.labels?.length).toBe(expectedItems);
+  });
+
+  describe("attribute selector", () => {
+    const forecastWithAllAttributes = TEST_FORECAST_DAILY.map((f, i) => ({
+      ...f,
+      humidity: 50 + i * 5,
+      pressure: 1010 + i * 2,
+      uv_index: i + 1,
+      apparent_temperature: f.temperature - 2,
+    }));
+
+    it("should not render attribute selector when show_attribute_selector is false", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: false },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector("wfc-forecast-chart");
+      expect(chartElement).not.toBeNull();
+
+      const settingsButton = chartElement!.querySelector(
+        ".wfc-settings-toggle-button"
+      );
+      expect(settingsButton).toBeNull();
+    });
+
+    it("should not render attribute selector when show_attribute_selector is undefined", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector("wfc-forecast-chart");
+      expect(chartElement).not.toBeNull();
+
+      const settingsButton = chartElement!.querySelector(
+        ".wfc-settings-toggle-button"
+      );
+      expect(settingsButton).toBeNull();
+    });
+
+    it("should render attribute selector when show_attribute_selector is true", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector("wfc-forecast-chart");
+      expect(chartElement).not.toBeNull();
+
+      const settingsButton = chartElement!.querySelector(
+        ".wfc-settings-toggle-button"
+      );
+      expect(settingsButton).not.toBeNull();
+    });
+
+    it("should open dropdown when settings button is clicked", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+      expect(chartElement).not.toBeNull();
+
+      const settingsButton = chartElement!.querySelector(
+        ".wfc-settings-toggle-button"
+      ) as HTMLElement;
+      expect(settingsButton).not.toBeNull();
+
+      // Initially dropdown should not be visible
+      let dropdown = chartElement!.querySelector("wfc-chart-attribute-selector");
+      expect(dropdown).not.toBeNull();
+      // @ts-expect-error: open is a property
+      expect(dropdown!.open).toBe(false);
+
+      // Click to open
+      settingsButton.click();
+      await chartElement.updateComplete;
+
+      dropdown = chartElement!.querySelector("wfc-chart-attribute-selector");
+      // @ts-expect-error: open is a property
+      expect(dropdown!.open).toBe(true);
+    });
+
+    it("should update chart when humidity attribute is selected", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      // Set forecast with humidity data
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // Simulate attribute selection
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      expect(dropdown).not.toBeNull();
+
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", { detail: { value: "humidity" } })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      expect(chartInstance).not.toBeNull();
+
+      // Verify chart has humidity data
+      const datasets = chartInstance!.data.datasets;
+      expect(datasets.length).toBe(1);
+
+      // Verify the data matches humidity values
+      const humidityData = datasets[0].data;
+      forecastWithAllAttributes.forEach((f, i) => {
+        expect(humidityData[i]).toBe(f.humidity);
+      });
+    });
+
+    it("should update chart when pressure attribute is selected", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", { detail: { value: "pressure" } })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      const datasets = chartInstance!.data.datasets;
+      expect(datasets.length).toBe(1);
+
+      const pressureData = datasets[0].data;
+      forecastWithAllAttributes.forEach((f, i) => {
+        expect(pressureData[i]).toBe(f.pressure);
+      });
+    });
+
+    it("should update chart when uv_index attribute is selected", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", { detail: { value: "uv_index" } })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      const datasets = chartInstance!.data.datasets;
+      expect(datasets.length).toBe(1);
+
+      // UV index uses bar chart
+      expect(datasets[0].type).toBe("bar");
+
+      const uvData = datasets[0].data;
+      forecastWithAllAttributes.forEach((f, i) => {
+        expect(uvData[i]).toBe(f.uv_index);
+      });
+    });
+
+    it("should update chart when apparent_temperature attribute is selected", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", {
+          detail: { value: "apparent_temperature" },
+        })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      const datasets = chartInstance!.data.datasets;
+      expect(datasets.length).toBe(1);
+
+      const apparentTempData = datasets[0].data;
+      forecastWithAllAttributes.forEach((f, i) => {
+        expect(apparentTempData[i]).toBe(f.apparent_temperature);
+      });
+    });
+
+    it("should switch back to temperature_and_precipitation", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+
+      // First switch to humidity
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", { detail: { value: "humidity" } })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      let chartInstance = chartElement._chart;
+      expect(chartInstance!.data.datasets.length).toBe(1);
+
+      // Switch back to default
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", {
+          detail: { value: "temperature_and_precipitation" },
+        })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      chartInstance = chartElement._chart;
+      // Default view has 3 datasets: high temp, low temp, precipitation
+      expect(chartInstance!.data.datasets.length).toBe(3);
+    });
+
+    it("should only show attributes that have data in forecast", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      // Set forecast without uv_index data
+      const forecastWithoutUV = TEST_FORECAST_DAILY.map((f) => ({
+        ...f,
+        humidity: 50,
+        pressure: 1013,
+        // uv_index intentionally omitted
+      }));
+      chartElement.forecast = forecastWithoutUV;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _getChartOptions is private
+      const options = chartElement._getChartOptions();
+
+      // Should include temperature_and_precipitation, humidity, pressure
+      // but not uv_index since it's not in the forecast data
+      const optionValues = options.map(
+        (o: { value: string }) => o.value
+      );
+      expect(optionValues).toContain("temperature_and_precipitation");
+      expect(optionValues).toContain("humidity");
+      expect(optionValues).toContain("pressure");
+      expect(optionValues).not.toContain("uv_index");
+    });
+
+    it("should close dropdown when closed event is fired", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart, show_attribute_selector: true },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      const settingsButton = chartElement!.querySelector(
+        ".wfc-settings-toggle-button"
+      ) as HTMLElement;
+
+      // Open dropdown
+      settingsButton.click();
+      await chartElement.updateComplete;
+
+      const dropdown = chartElement!.querySelector("wfc-chart-attribute-selector");
+      // @ts-expect-error: open is a property
+      expect(dropdown!.open).toBe(true);
+
+      // Fire closed event
+      dropdown!.dispatchEvent(new CustomEvent("closed"));
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: open is a property
+      expect(dropdown!.open).toBe(false);
+    });
+
+    it("should use bar dataset type for uv_index", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          show_attribute_selector: true,
+          default_chart_attribute: "uv_index",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // UV index uses bar type in the dataset
+      expect(chartInstance!.data.datasets[0].type).toBe("bar");
+    });
+
+    it("should use line dataset type for humidity", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          show_attribute_selector: true,
+          default_chart_attribute: "humidity",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // Line charts don't set explicit type on datasets (uses chart's default)
+      expect(chartInstance!.data.datasets[0].type).toBeUndefined();
+    });
+
+    it("should use mixed dataset types for temperature_and_precipitation", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          show_attribute_selector: true,
+          default_chart_attribute: "temperature_and_precipitation",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // Default view has 3 datasets: high temp (line), low temp (line), precipitation (bar)
+      expect(chartInstance!.data.datasets.length).toBe(3);
+      expect(chartInstance!.data.datasets[2].type).toBe("bar"); // Precipitation is bar
+    });
+
+    it("should use temperature_and_precipitation as default when default_chart_attribute is not set", async () => {
+      const { card } = await createCardFixture({
+        forecast: { mode: ForecastMode.Chart },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _selectedAttribute is private
+      expect(chartElement._selectedAttribute).toBe(
+        "temperature_and_precipitation"
+      );
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // Default view has 3 datasets: high temp, low temp, precipitation
+      expect(chartInstance!.data.datasets.length).toBe(3);
+    });
+
+    it("should use configured default_chart_attribute on initial render", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          default_chart_attribute: "humidity",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _selectedAttribute is private
+      expect(chartElement._selectedAttribute).toBe("humidity");
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // Humidity uses single dataset
+      expect(chartInstance!.data.datasets.length).toBe(1);
+
+      const humidityData = chartInstance!.data.datasets[0].data;
+      forecastWithAllAttributes.forEach((f, i) => {
+        expect(humidityData[i]).toBe(f.humidity);
+      });
+    });
+
+    it("should use configured default_chart_attribute for uv_index", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          default_chart_attribute: "uv_index",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _selectedAttribute is private
+      expect(chartElement._selectedAttribute).toBe("uv_index");
+
+      // @ts-expect-error: _chart is private
+      const chartInstance = chartElement._chart;
+      // UV index uses bar chart
+      expect(chartInstance!.data.datasets[0].type).toBe("bar");
+    });
+
+    it("should update chart root type when switching from uv_index to temperature_and_precipitation", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          show_attribute_selector: true,
+          default_chart_attribute: "uv_index",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      let chartInstance = chartElement._chart;
+      // Initially UV index uses bar chart type
+      expect(chartInstance!.config.type).toBe("bar");
+
+      // Switch to temperature_and_precipitation
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", {
+          detail: { value: "temperature_and_precipitation" },
+        })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      chartInstance = chartElement._chart;
+      // After switching, chart should be line type, not bar
+      expect(chartInstance!.config.type).toBe("line");
+      expect(chartInstance!.data.datasets.length).toBe(3);
+    });
+
+    it("should update chart root type when switching from temperature_and_precipitation to uv_index", async () => {
+      const { card } = await createCardFixture({
+        forecast: {
+          mode: ForecastMode.Chart,
+          show_attribute_selector: true,
+          default_chart_attribute: "temperature_and_precipitation",
+        },
+      });
+
+      const chartElement = card.shadowRoot!.querySelector(
+        "wfc-forecast-chart"
+      ) as WfcForecastChart;
+
+      chartElement.forecast = forecastWithAllAttributes;
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      let chartInstance = chartElement._chart;
+      // Initially temperature_and_precipitation uses line chart type
+      expect(chartInstance!.config.type).toBe("line");
+
+      // Switch to uv_index
+      const dropdown = chartElement.querySelector("wfc-chart-attribute-selector");
+      dropdown!.dispatchEvent(
+        new CustomEvent("selected", {
+          detail: { value: "uv_index" },
+        })
+      );
+      await chartElement.updateComplete;
+
+      // @ts-expect-error: _chart is private
+      chartInstance = chartElement._chart;
+      // After switching, chart should be bar type
+      expect(chartInstance!.config.type).toBe("bar");
+      expect(chartInstance!.data.datasets.length).toBe(1);
+    });
   });
 });

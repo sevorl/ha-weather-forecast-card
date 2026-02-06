@@ -44,6 +44,19 @@ export const WEATHER_EFFECTS = [
 export type CurrentWeatherAttributes =
   (typeof CURRENT_WEATHER_ATTRIBUTES)[number];
 
+export const CHART_ATTRIBUTES = [
+  "temperature_and_precipitation",
+  "apparent_temperature",
+  "humidity",
+  "pressure",
+  "uv_index",
+] as const;
+
+export type ChartAttributes = (typeof CHART_ATTRIBUTES)[number];
+
+export const DEFAULT_CHART_ATTRIBUTE: ChartAttributes =
+  "temperature_and_precipitation";
+
 export interface CurrentWeatherAttributeConfig {
   name: CurrentWeatherAttributes;
   entity?: string;
@@ -60,6 +73,10 @@ export interface ForecastToggleActionConfig extends BaseActionConfig {
   action: "toggle-forecast";
 }
 
+export interface ForecastSelectAttributeActionConfig extends BaseActionConfig {
+  action: "select-forecast-attribute";
+}
+
 export interface WeatherForecastCardForecastConfig {
   extra_attribute?: string;
   mode?: ForecastMode;
@@ -70,6 +87,8 @@ export interface WeatherForecastCardForecastConfig {
   scroll_to_selected?: boolean;
   use_color_thresholds?: boolean;
   temperature_precision?: number;
+  show_attribute_selector?: boolean;
+  default_chart_attribute?: ChartAttributes;
 }
 
 export interface WeatherForecastCardCurrentConfig {
@@ -107,7 +126,10 @@ export interface WeatherForecastCardConfig {
   double_tap_action?: ActionConfig | undefined;
 }
 
-export type ForecastActionConfig = ForecastToggleActionConfig | ActionConfig;
+export type ForecastActionConfig =
+  | ForecastToggleActionConfig
+  | ForecastSelectAttributeActionConfig
+  | ActionConfig;
 
 export type ExtendedHomeAssistant = HomeAssistant & {
   formatEntityState: (stateObj: HassEntity) => string | undefined;
