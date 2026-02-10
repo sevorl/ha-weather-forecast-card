@@ -95,6 +95,7 @@ export class WfcForecastChart extends LitElement {
   @property({ attribute: false }) forecast: ForecastAttribute[] = [];
   @property({ attribute: false }) config!: WeatherForecastCardConfig;
   @property({ attribute: false }) forecastType!: ForecastType;
+  @property({ attribute: false }) isTwiceDailyEntity = false;
   @property({ attribute: false }) itemWidth: number = 0;
   @property({ attribute: false }) isScrollable = false;
   @query("canvas") private _canvas?: HTMLCanvasElement;
@@ -248,8 +249,8 @@ export class WfcForecastChart extends LitElement {
 
           <div class="wfc-forecast-chart-footer">
             ${forecast.map(
-              (item) => html`
-                <div class="wfc-forecast-slot">
+              (item, index) => html`
+                <div class="wfc-forecast-slot" data-index=${index}>
                   <wfc-forecast-info
                     .hass=${this.hass}
                     .weatherEntity=${this.weatherEntity}
@@ -812,7 +813,7 @@ export class WfcForecastChart extends LitElement {
     const parts: TemplateResult[] = [];
     let currentDay: string | undefined;
 
-    forecast.forEach((item) => {
+    forecast.forEach((item, index) => {
       if (!item.datetime) {
         return;
       }
@@ -830,11 +831,12 @@ export class WfcForecastChart extends LitElement {
       }
 
       parts.push(html`
-        <div class="wfc-forecast-slot">
+        <div class="wfc-forecast-slot" data-index=${index}>
           <wfc-forecast-header-items
             .hass=${this.hass}
             .forecast=${item}
             .forecastType=${this.forecastType}
+            .isTwiceDailyEntity=${this.isTwiceDailyEntity}
             .config=${this.config}
           ></wfc-forecast-header-items>
         </div>

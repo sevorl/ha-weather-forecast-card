@@ -28,6 +28,7 @@ export class WfcForecastSimple extends LitElement {
   @property({ attribute: false }) weatherEntity!: WeatherEntity;
   @property({ attribute: false }) forecast: ForecastAttribute[] = [];
   @property({ attribute: false }) forecastType!: ForecastType;
+  @property({ attribute: false }) isTwiceDailyEntity = false;
   @property({ attribute: false }) config!: WeatherForecastCardConfig;
   @property({ attribute: false }) isScrollable = false;
 
@@ -77,6 +78,7 @@ export class WfcForecastSimple extends LitElement {
             .hass=${this.hass}
             .forecast=${forecast}
             .forecastType=${this.forecastType}
+            .isTwiceDailyEntity=${this.isTwiceDailyEntity}
             .config=${this.config}
           ></wfc-forecast-header-items>
           <wfc-forecast-details
