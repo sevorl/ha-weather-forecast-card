@@ -1180,6 +1180,7 @@ describe("weather-forecast-card chart", () => {
       );
 
       const pluginOptions = chart.options.plugins?.datalabels;
+      // @ts-expect-error: font size
       expect(pluginOptions?.font?.size).toBe(16);
     });
 
@@ -1247,7 +1248,6 @@ describe("weather-forecast-card chart", () => {
 
       // Dataset 2 is precipitation (bar chart)
       const precipDataset = chart.data.datasets[2];
-      // @ts-expect-error: datalabels type
       expect(precipDataset.datalabels?.offset).toBe(-26);
     });
 
