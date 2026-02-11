@@ -1066,6 +1066,7 @@ describe("weather-forecast-card chart", () => {
       // @ts-expect-error: _chart is private
       let chartInstance = chartElement._chart;
       // Initially UV index uses bar chart type
+      // @ts-expect-error type is private
       expect(chartInstance!.config.type).toBe("bar");
 
       // Switch to temperature_and_precipitation
@@ -1082,6 +1083,7 @@ describe("weather-forecast-card chart", () => {
       // @ts-expect-error: _chart is private
       chartInstance = chartElement._chart;
       // After switching, chart should be line type, not bar
+      // @ts-expect-error type is private
       expect(chartInstance!.config.type).toBe("line");
       expect(chartInstance!.data.datasets.length).toBe(3);
     });
@@ -1105,6 +1107,7 @@ describe("weather-forecast-card chart", () => {
       // @ts-expect-error: _chart is private
       let chartInstance = chartElement._chart;
       // Initially temperature_and_precipitation uses line chart type
+      // @ts-expect-error type is private
       expect(chartInstance!.config.type).toBe("line");
 
       // Switch to uv_index
@@ -1121,6 +1124,7 @@ describe("weather-forecast-card chart", () => {
       // @ts-expect-error: _chart is private
       chartInstance = chartElement._chart;
       // After switching, chart should be bar type
+      // @ts-expect-error type is private
       expect(chartInstance!.config.type).toBe("bar");
       expect(chartInstance!.data.datasets.length).toBe(1);
     });
