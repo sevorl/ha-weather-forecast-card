@@ -521,6 +521,7 @@ export class MockHass {
           "ui.card.weather.attributes.apparent_temperature":
             "Apparent Temperature",
           "ui.card.weather.attributes.cloud_coverage": "Cloud Coverage",
+          "ui.card.weather.attributes.precipitation": "Precipitation",
           "ui.card.weather.cardinal_direction.n": "N",
           "ui.card.weather.cardinal_direction.nne": "NNE",
           "ui.card.weather.cardinal_direction.ne": "NE",

@@ -24,10 +24,10 @@ This card takes inspiration from [Weather Forecast Extended Card](https://github
 
 **Key features:**
 
-- **Scrollable forecast** – View more forecast entries than fit on screen
+- **Scrollable forecast** – Visualize more forecast data in a scrollable layout
 - **Toggle views** – Switch between hourly and daily forecasts with a tap
 - **Visualize precipitation** – See precipitation amounts for each forecast entry
-- **Chart mode** – Visualize temperature, precipitation, and other weather attributes with interactive selector
+- **Chart mode** – Visualize forecast trend charts with interactive attribute selector
 - **Extra attributes** – Display extra attributes, like wind direction, wind bearing, or precipitation probability
 - **Group hourly data** - Aggregate multiple hours of forecast data for easier viewing
 - **Custom icons** – Use your own weather icons
