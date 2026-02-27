@@ -1,6 +1,6 @@
 {
   "name": "weather-forecast-card",
-  "version": "1.1.0",
+  "version": "1.2.0-devel",
   "description": "A TypeScript weather forecast card built with Parcel",
   "author": "troinine",
   "license": "MIT",
