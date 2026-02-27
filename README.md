@@ -2,19 +2,28 @@
   <img src="https://raw.githubusercontent.com/troinine/ha-weather-forecast-card/refs/heads/main/docs/weather-forecast-card-demo.gif" alt="Weather Forecast Card" width="600" style="border-radius: 12px;">
   <br>
   <a href=https://www.home-assistant.io/><img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-Start-blue?logo=homeassistant&logoColor=fff&style=for-the-badge&labelColor=000"></a>
-  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=troinine&repository=ha-weather-forecast-card&category=Dashboard"><img alt="HACS" src="https://img.shields.io/badge/HACS-default-blue?logo=homeassistantcommunitystore&logoColor=fff&style=for-the-badge&labelColor=000"></a>
-  <a href="https://github.com/troinine/ha-weather-forecast-card/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/troinine/ha-weather-forecast-card?style=for-the-badge&labelColor=000&logoColor=fff&color=blue"></a>
-  <a href="https://github.com/troinine/ha-weather-forecast-card/actions/workflows/build.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/troinine/ha-weather-forecast-card/build.yml?branch=main&style=for-the-badge&logo=github&label=Tests&labelColor=000&logoColor=fff&color=blue"></a>
-  <a href="https://github.com/troinine/ha-weather-forecast-card/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/troinine/ha-weather-forecast-card/total?style=for-the-badge&labelColor=000&logoColor=fff&color=blue"></a>
+  <a href="https://github.com/sevorl/ha-weather-forecast-card/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/sevorl/ha-weather-forecast-card?style=for-the-badge&labelColor=000&logoColor=fff&color=blue"></a>
+  <a href="https://github.com/sevorl/ha-weather-forecast-card/actions/workflows/build.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/sevorl/ha-weather-forecast-card/build.yml?branch=main&style=for-the-badge&logo=github&label=Tests&labelColor=000&logoColor=fff&color=blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&labelColor=000"></a>
 </div>
 
-# Weather Forecast Card
+# Weather Forecast Card (Fork)
 
 A custom weather card for Home Assistant that displays current weather and forecast in a scrollable horizontal list or chart.
 
 > [!NOTE]
-> This card is under active development and primarily built for my personal use cases but if you find it useful, feel free to use and share feedback!
+> This is a community fork of [troinine/ha-weather-forecast-card](https://github.com/troinine/ha-weather-forecast-card) — all credit for the original design, architecture, and the vast majority of features belongs to **troinine**. This fork adds a small set of extra features on top of the upstream codebase. Changes are tracked in the [Fork Changes](#fork-changes) section below.
+
+## Fork Changes
+
+The following features have been added in this fork on top of the upstream [troinine/ha-weather-forecast-card](https://github.com/troinine/ha-weather-forecast-card):
+
+### Grouped condition icon spans
+
+- **`forecast.group_condition_icons`** – groups consecutive forecast entries sharing the same visual weather condition into a single colored span with one icon, eliminating repetition and making changing conditions stand out at a glance.
+- **`forecast.show_condition_labels`** – when grouping is enabled, renders the localized weather condition name (e.g. "Partly Cloudy") as text inside each span. The label color is automatically computed for WCAG contrast against the span's background color.
+
+See [Condition Colors](#condition-colors) for a full configuration example.
 
 ## Why this card
 
@@ -30,6 +39,7 @@ This card takes inspiration from [Weather Forecast Extended Card](https://github
 - **Chart mode** – Visualize forecast trend charts with interactive attribute selector
 - **Extra attributes** – Display extra attributes, like wind direction, wind bearing, or precipitation probability
 - **Group hourly data** - Aggregate multiple hours of forecast data for easier viewing
+- **Group condition icons** – Collapse consecutive hours with the same weather condition into a single labeled, color-coded span
 - **Custom icons** – Use your own weather icons
 - **Customizable actions** – Configure tap, hold, and double-tap behaviors
 - **Sun times** - Visualize sunrise and sunset
@@ -161,17 +171,20 @@ current:
 
 ### Forecast Object
 
-| Name                      | Type    | Default                         | Description                                                                                                                                                                                                                                                                           |
-| :------------------------ | :------ | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `extra_attribute`         | string  | optional                        | The extra attribute to show below the weather forecast. Currently supports, `precipitation_probability`, `wind_direction` and `wind_bearing`                                                                                                                                          |
-| `hourly_group_size`       | number  | `1`                             | Number of hours to group together in hourly forecast. Group data will be aggregated per forecast attribute.                                                                                                                                                                           |
-| `hourly_slots`            | number  | optional                        | Limit the number of hourly forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                             |
-| `daily_slots`             | number  | optional                        | Limit the number of daily forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                              |
-| `mode`                    | string  | `simple`                        | Forecast display mode. `simple`: Horizontal scrollable list of forecast entries. `chart`: Visualize temperature and precipitation trends on a line/bar chart.                                                                                                                         |
-| `scroll_to_selected`      | boolean | `true`                          | Automatically scrolls to the first hourly forecast of the selected date when switching to hourly view, and returns to the first daily entry when switching back.                                                                                                                      |
-| `show_sun_times`          | boolean | `true`                          | Displays sunrise and sunset times in the hourly forecast, and uses specific icons to visualize clear night conditions.                                                                                                                                                                |
-| `group_condition_icons`   | boolean | `false`                         | Group consecutive forecast entries that share the same visual condition into a single span with one icon. Improves readability by avoiding repeated icons when conditions remain unchanged across hours.                                                                               |
-| `condition_colors`        | boolean | `true`                          | Colorize forecast condition spans with condition-based background colors. Defaults are provided; you can override per condition via `condition_color_map`.                                                                                                                             |
+> Options marked with ⭐ are additions specific to this fork and are not available in [troinine/ha-weather-forecast-card](https://github.com/troinine/ha-weather-forecast-card).
+
+| Name                                   | Type    | Default                         | Description                                                                                                                                                                                                                                                                           |
+| :------------------------------------- | :------ | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `extra_attribute`                      | string  | optional                        | The extra attribute to show below the weather forecast. Currently supports, `precipitation_probability`, `wind_direction` and `wind_bearing`                                                                                                                                          |
+| `hourly_group_size`                    | number  | `1`                             | Number of hours to group together in hourly forecast. Group data will be aggregated per forecast attribute.                                                                                                                                                                           |
+| `hourly_slots`                         | number  | optional                        | Limit the number of hourly forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                             |
+| `daily_slots`                          | number  | optional                        | Limit the number of daily forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                              |
+| `mode`                                 | string  | `simple`                        | Forecast display mode. `simple`: Horizontal scrollable list of forecast entries. `chart`: Visualize temperature and precipitation trends on a line/bar chart.                                                                                                                         |
+| `scroll_to_selected`                   | boolean | `true`                          | Automatically scrolls to the first hourly forecast of the selected date when switching to hourly view, and returns to the first daily entry when switching back.                                                                                                                      |
+| `show_sun_times`                       | boolean | `true`                          | Displays sunrise and sunset times in the hourly forecast, and uses specific icons to visualize clear night conditions.                                                                                                                                                                |
+| ⭐ `group_condition_icons`              | boolean | `false`                         | Group consecutive forecast entries that share the same visual condition into a single span with one icon. Improves readability by avoiding repeated icons when conditions remain unchanged across hours.                                                                               |
+| ⭐ `show_condition_labels`              | boolean | `false`                         | When `group_condition_icons` is `true`, renders the localized weather condition name as text inside each grouped span. The text color is automatically calculated for WCAG contrast against the span's background color.                                                              |
+| `condition_colors`                     | boolean | `true`                          | Colorize forecast condition spans with condition-based background colors. Defaults are provided; you can override per condition via `condition_color_map`.                                                                                                                             |
 | `condition_color_map`     | object  | optional                        | Optional map to override condition colors. Keys are condition names (lower-case, dashes, e.g., `clear-night`, `lightning-rainy`) and values can be a string (background) or an object `{ background, foreground }`.                                                                  |
 | `temperature_precision`   | number  | optional                        | Number of decimal places to display for temperature values (0-2). Applies to forecast temperatures shown in `chart` mode. Due to the layout limitations, this setting is not affecting `simple` mode which uses fixed precision of `0`.                                               |
 | `use_color_thresholds`    | boolean | `true`                          | Replaces solid temperature lines with a gradient based on actual values when using forecast chart mode. Colors transition at fixed intervals: -10° (Cold), 0° (Freezing), 8° (Chilly), 18° (Mild), 26° (Warm), and 34° (Hot). These thresholds are specified in degrees Celsius (°C). |
@@ -255,6 +268,19 @@ Notes:
 - A value can be a background color string (e.g., `"#44739d"`) or an object with `background` and optional `foreground`.
 - If `forecast.show_sun_times` is enabled, daytime-only conditions at night (e.g., `sunny` before sunrise) are treated as `clear-night` for coloring and grouping.
 
+### Condition Labels
+
+Enable `forecast.show_condition_labels` to render the localized weather condition name as text inside each grouped span (requires `group_condition_icons: true`). The label text color is automatically determined for WCAG-compliant contrast against the span's background color — no manual foreground configuration is necessary.
+
+```yaml
+type: custom:weather-forecast-card
+entity: weather.home
+forecast:
+  group_condition_icons: true
+  condition_colors: true
+  show_condition_labels: true
+```
+
 ### Example: Customizing condition colors
 
 ```yaml
@@ -262,6 +288,7 @@ type: custom:weather-forecast-card
 entity: weather.home
 forecast:
   group_condition_icons: true
+  show_condition_labels: true
   condition_colors: true
   condition_color_map:
     clear-night: "#000000"           # deep night sky
@@ -275,7 +302,7 @@ forecast:
       foreground: "#fbbf24"         # highlight lightning
 ```
 
-With grouping enabled, the card renders a single icon and a colored span across consecutive hours sharing the same visual condition, improving scanability of changing weather.
+With grouping enabled, the card renders a single icon and a colored span across consecutive hours sharing the same visual condition, improving scanability of changing weather. When `show_condition_labels` is also enabled, each span additionally shows the human-readable condition name (e.g. "Partly Cloudy") in an automatically contrasted color.
 
 ## Weather Condition Effects
 
