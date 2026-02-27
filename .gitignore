@@ -194,3 +194,6 @@ dist
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,visualstudiocode
+
+# VS Code workspace files
+*.code-workspace
