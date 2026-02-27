@@ -268,6 +268,22 @@ export const endOfHour = (input: Date | string): Date => {
  * @param forecast - Array of forecast items to group
  * @returns Array of condition spans with start/end indices and counts
  */
+/**
+ * Returns the localized display name for a weather condition code.
+ * Falls back to the raw condition string if no localization is found.
+ */
+export const getLocalizedCondition = (
+  hass: HomeAssistant,
+  condition: string
+): string => {
+  const normalized = condition.toLowerCase().replace(/_/g, "-");
+  return (
+    hass.localize(
+      `component.weather.entity_component._.state.${normalized}`
+    ) || condition
+  );
+};
+
 export const groupForecastByCondition = (
   forecast: ForecastAttribute[],
   hass?: HomeAssistant

@@ -95,6 +95,7 @@ export interface WeatherForecastCardForecastConfig {
   use_color_thresholds?: boolean;
   temperature_precision?: number;
   group_condition_icons?: boolean;
+  show_condition_labels?: boolean;
   condition_colors?: boolean;
   condition_color_map?: ConditionColorMap;
   show_attribute_selector?: boolean;
