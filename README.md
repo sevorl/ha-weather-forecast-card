@@ -50,22 +50,22 @@ This card takes inspiration from [Weather Forecast Extended Card](https://github
 
 ### HACS (recommended)
 
-The card is available in [HACS](https://hacs.xyz/) (Home Assistant Community Store). Use the following link to directly go to the repository in HACS:
+This fork is not listed in the default HACS store. You can add it as a **custom repository**:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=troinine&repository=ha-weather-forecast-card&category=Dashboard)
-
-Or manually:
-
-1. Open Home Assistant
-2. Go to **Settings** → **Devices & Services** → **HACS**
-3. Search for "Weather Forecast Card"
-4. Click "Download"
+1. Open Home Assistant and go to **HACS**
+2. Click the three-dot menu (⋮) in the top-right corner and choose **Custom repositories**
+3. Enter the repository URL: `https://github.com/sevorl/ha-weather-forecast-card`
+4. Select category **Dashboard** and click **Add**
+5. Search for "Weather Forecast Card" in HACS and click **Download**
 
 You can now add the card to your dashboard by clicking "Edit dashboard" from the top right corner. You may need to clear your browser cache.
 
+> [!NOTE]
+> If you previously installed the original card from [troinine/ha-weather-forecast-card](https://github.com/troinine/ha-weather-forecast-card) via HACS, remove it first to avoid conflicts.
+
 ### Manual Installation
 
-1. Download the latest `weather-forecast-card.js` from the [releases page](https://github.com/troinine/ha-weather-forecast-card/releases)
+1. Download the latest `weather-forecast-card.js` from the [releases page](https://github.com/sevorl/ha-weather-forecast-card/releases)
 2. Copy it to your `config/www` folder
 3. Add the resource to your Lovelace configuration:
 
