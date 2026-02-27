@@ -24,10 +24,10 @@ This card takes inspiration from [Weather Forecast Extended Card](https://github
 
 **Key features:**
 
-- **Scrollable forecast** – View more forecast entries than fit on screen
+- **Scrollable forecast** – Visualize more forecast data in a scrollable layout
 - **Toggle views** – Switch between hourly and daily forecasts with a tap
 - **Visualize precipitation** – See precipitation amounts for each forecast entry
-- **Chart mode** – Visualize temperature and precipitation trends
+- **Chart mode** – Visualize forecast trend charts with interactive attribute selector
 - **Extra attributes** – Display extra attributes, like wind direction, wind bearing, or precipitation probability
 - **Group hourly data** - Aggregate multiple hours of forecast data for easier viewing
 - **Custom icons** – Use your own weather icons
@@ -74,7 +74,6 @@ resources:
 | `type`                   | `string`          | **Required** | `custom:weather-forecast-card`                                                                                                                                                    |
 | `entity`                 | `string`          | **Required** | The weather entity id (e.g., `weather.home`).                                                                                                                                     |
 | `name`                   | `string`          | optional     | Custom name to display. Defaults to the entity's friendly name.                                                                                                                   |
-| `temperature_entity`     | `string`          | optional     | Bring your own temperature entity to override the temperature from the main weather `entity`.                                                                                     |
 | `show_current`           | `boolean`         | `true`       | Show current weather conditions.                                                                                                                                                  |
 | `show_forecast`          | `boolean`         | `true`       | Show forecast section.                                                                                                                                                            |
 | `default_forecast`       | `string`          | `daily`      | Default forecast to view (`daily` or `hourly`).                                                                                                                                   |
@@ -93,8 +92,9 @@ The `current` object controls the display of current weather information and att
 
 | Name                       | Type                       | Default  | Description                                                                                                                                                                                                                                                                                                                                                |
 | :------------------------- | :------------------------- | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `show_attributes`          | `boolean`/`string`/`array` | optional | Display weather attributes below current conditions. Set to `true` to show all available attributes, `false` to hide all, a single attribute name (e.g., `"humidity"`), or an array of attribute names (e.g., `["humidity", "pressure"]`).                                                                                                                 |
-| `secondary_info_attribute` | `string`                   | optional | Controls which secondary info is displayed below current temperature. Supports all available weather attributes. If not set, or if the given attribute is not available in the weather entity, it will default to temperature extrema (high/low) if available, if not available then `precipitation` and if precipitation isn’t available then `humidity`. |
+| `temperature_entity`       | `string`                   | optional | Bring your own temperature entity to override the temperature from the main weather `entity`. **Note:** The root level `temperature_entity` is deprecated but still supported and will be migrated automatically when editing the card using the card editor.                                                                                              |
+| `show_attributes`          | `boolean`/`string`/`array` | optional | Display weather attributes below current conditions. Set to `true` to show all available attributes, `false` to hide all, a single attribute name (e.g., `"humidity"`), or an array of attribute names or objects. See [Custom Attribute Entities](#custom-attribute-entities) for advanced configuration.                                                 |
+| `secondary_info_attribute` | `string`                   | optional | Controls which secondary info is displayed below current temperature. Supports all available weather attributes. If not set, or if the given attribute is not available in the weather entity, it will default to temperature extrema (high/low) if available, if not available then `precipitation` and if precipitation isn't available then `humidity`. |
 | `temperature_precision`    | `number`                   | optional | Number of decimal places to display for temperature values (0-2). Applies to current temperature, high/low temperatures, and temperature-related attributes like dew point and apparent temperature.                                                                                                                                                       |
 
 **Available attributes:**
@@ -111,39 +111,125 @@ The `current` object controls the display of current weather information and att
 - `cloud_coverage` - Cloud coverage percentage
 
 > [!NOTE]
-> Attributes are only rendered if the data is available from your weather entity. If an attribute is not provided by your weather integration, it will not be displayed even if configured.
+> Attributes are only rendered if the data is available from your weather entity (or custom sensor entity if configured). If an attribute is not provided by your weather integration, it will not be displayed even if configured.
+
+#### Custom Attribute Entities
+
+Similar to the `current.temperature_entity` option, you can override individual attribute values with custom sensor entities. This is useful when your weather integration doesn't provide certain attributes or when you have more accurate local sensors.
+
+**Object format for attributes:**
+
+| Property | Type     | Description                                                            |
+| :------- | :------- | :--------------------------------------------------------------------- |
+| `name`   | `string` | The attribute name (e.g., `humidity`, `pressure`)                      |
+| `entity` | `string` | Optional sensor entity ID to use instead of the weather entity's value |
+
+**Configuration examples:**
+
+```yaml
+# Simple array of attribute names (uses weather entity values)
+current:
+  show_attributes:
+    - humidity
+    - pressure
+    - wind_speed
+```
+
+```yaml
+# Object format with custom entities
+current:
+  show_attributes:
+    - name: humidity
+      entity: sensor.outdoor_humidity
+    - name: pressure
+      entity: sensor.barometer
+    - name: wind_speed # No entity specified, uses weather entity
+```
+
+```yaml
+# Mixed format (strings and objects)
+current:
+  show_attributes:
+    - humidity # Uses weather entity
+    - name: pressure
+      entity: sensor.custom_pressure
+    - wind_speed # Uses weather entity
+```
+
+> [!TIP]
+> The card editor provides entity selectors with appropriate device class filtering when you select attributes. Expand the "Attribute entities" section to configure custom sensors for each selected attribute.
 
 ### Forecast Object
 
-| Name                    | Type    | Default  | Description                                                                                                                                                                                                                                                                           |
-| :---------------------- | :------ | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `extra_attribute`       | string  | optional | The extra attribute to show below the weather forecast. Currently supports, `precipitation_probability`, `wind_direction` and `wind_bearing`                                                                                                                                          |
-| `hourly_group_size`     | number  | `1`      | Number of hours to group together in hourly forecast. Group data will be aggregated per forecast attribute.                                                                                                                                                                           |
-| `hourly_slots`          | number  | optional | Limit the number of hourly forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                             |
-| `daily_slots`           | number  | optional | Limit the number of daily forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                              |
-| `mode`                  | string  | `simple` | Forecast display mode. `simple`: Horizontal scrollable list of forecast entries. `chart`: Visualize temperature and precipitation trends on a line/bar chart.                                                                                                                         |
-| `scroll_to_selected`    | boolean | `false`  | Automatically scrolls to the first hourly forecast of the selected date when switching to hourly view, and returns to the first daily entry when switching back.                                                                                                                      |
-| `show_sun_times`        | boolean | `true`   | Displays sunrise and sunset times in the hourly forecast, and uses specific icons to visualize clear night conditions.                                                                                                                                                                |
-| `group_condition_icons` | boolean | `false`  | Group consecutive forecast entries that share the same visual condition into a single span with one icon. Improves readability by avoiding repeated icons when conditions remain unchanged across hours.                                     |
-| `condition_colors`      | boolean | `true`   | Colorize forecast condition spans with condition-based background colors. Defaults are provided; you can override per condition via `condition_color_map`.                                                                                      |
-| `condition_color_map`   | object  | optional | Optional map to override condition colors. Keys are condition names (lower-case, dashes, e.g., `clear-night`, `lightning-rainy`) and values can be a string (background) or an object `{ background, foreground }`.                            |
-| `temperature_precision` | number  | optional | Number of decimal places to display for temperature values (0-2). Applies to forecast temperatures shown in `chart` mode. Due to the layout limitations, this setting is not affecting `simple` mode which uses fixed precision of `0`.                                               |
-| `use_color_thresholds`  | boolean | `false`  | Replaces solid temperature lines with a gradient based on actual values when using forecast chart mode. Colors transition at fixed intervals: -10° (Cold), 0° (Freezing), 8° (Chilly), 18° (Mild), 26° (Warm), and 34° (Hot). These thresholds are specified in degrees Celsius (°C). |
+| Name                      | Type    | Default                         | Description                                                                                                                                                                                                                                                                           |
+| :------------------------ | :------ | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `extra_attribute`         | string  | optional                        | The extra attribute to show below the weather forecast. Currently supports, `precipitation_probability`, `wind_direction` and `wind_bearing`                                                                                                                                          |
+| `hourly_group_size`       | number  | `1`                             | Number of hours to group together in hourly forecast. Group data will be aggregated per forecast attribute.                                                                                                                                                                           |
+| `hourly_slots`            | number  | optional                        | Limit the number of hourly forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                             |
+| `daily_slots`             | number  | optional                        | Limit the number of daily forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                              |
+| `mode`                    | string  | `simple`                        | Forecast display mode. `simple`: Horizontal scrollable list of forecast entries. `chart`: Visualize temperature and precipitation trends on a line/bar chart.                                                                                                                         |
+| `scroll_to_selected`      | boolean | `true`                          | Automatically scrolls to the first hourly forecast of the selected date when switching to hourly view, and returns to the first daily entry when switching back.                                                                                                                      |
+| `show_sun_times`          | boolean | `true`                          | Displays sunrise and sunset times in the hourly forecast, and uses specific icons to visualize clear night conditions.                                                                                                                                                                |
+| `group_condition_icons`   | boolean | `false`                         | Group consecutive forecast entries that share the same visual condition into a single span with one icon. Improves readability by avoiding repeated icons when conditions remain unchanged across hours.                                                                               |
+| `condition_colors`        | boolean | `true`                          | Colorize forecast condition spans with condition-based background colors. Defaults are provided; you can override per condition via `condition_color_map`.                                                                                                                             |
+| `condition_color_map`     | object  | optional                        | Optional map to override condition colors. Keys are condition names (lower-case, dashes, e.g., `clear-night`, `lightning-rainy`) and values can be a string (background) or an object `{ background, foreground }`.                                                                  |
+| `temperature_precision`   | number  | optional                        | Number of decimal places to display for temperature values (0-2). Applies to forecast temperatures shown in `chart` mode. Due to the layout limitations, this setting is not affecting `simple` mode which uses fixed precision of `0`.                                               |
+| `use_color_thresholds`    | boolean | `true`                          | Replaces solid temperature lines with a gradient based on actual values when using forecast chart mode. Colors transition at fixed intervals: -10° (Cold), 0° (Freezing), 8° (Chilly), 18° (Mild), 26° (Warm), and 34° (Hot). These thresholds are specified in degrees Celsius (°C). |
+| `show_attribute_selector` | boolean | `false`                         | Displays a settings icon in the top-right corner of the chart for quick access to the attribute selector. The attribute selector is also accessible via hold action by default. See [Chart Attribute Selector](#chart-attribute-selector).                                            |
+| `default_chart_attribute` | string  | `temperature_and_precipitation` | The weather attribute to display by default in chart mode. See [Chart Attribute Selector](#chart-attribute-selector) for available values.                                                                                                                                            |
 
 > [!IMPORTANT]
 > **Canvas width limit:** To ensure cross-browser compatibility and prevent rendering issues, the canvas width is capped at 16384 pixels in `chart` mode. At a standard item width of 50px, this supports approximately 320 entries (roughly two weeks of data) which is more than enough to cover reliable weather data from most forecast services. Any data exceeding this limit will be truncated.
 
 ### Forecast Actions
 
-Actions support standard Home Assistant card actions. However, one additional action has been defined: `toggle-forecast` will toggle the forecast between daily and hourly forecast.
+Actions support standard Home Assistant card actions. However, two additional actions have been defined:
+
+- `toggle-forecast` - Toggles the forecast between daily and hourly views
+- `select-forecast-attribute` - Opens the attribute selector dropdown in chart mode (default hold action)
 
 Forecast actions have the following options
 
-| Name                | Type     | Default action    | Description                                                                                                                             |
-| :------------------ | :------- | :---------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| `tap_action`        | `object` | `toggle-forecast` | Defines the type action to perform on tap. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/).             |
-| `hold_action`       | `object` | `none`            | Defines the type of action to perform on hold. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/).         |
-| `double_tap_action` | `object` | `none`            | Defines the type of action to perform on double click. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/). |
+| Name                | Type     | Default action              | Description                                                                                                                             |
+| :------------------ | :------- | :-------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `tap_action`        | `object` | `toggle-forecast`           | Defines the type action to perform on tap. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/).             |
+| `hold_action`       | `object` | `select-forecast-attribute` | Defines the type of action to perform on hold. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/).         |
+| `double_tap_action` | `object` | `none`                      | Defines the type of action to perform on double click. See [Home Assistant Actions](https://www.home-assistant.io/dashboards/actions/). |
+
+### Chart Attribute Selector
+
+When using chart mode (`mode: chart`), an interactive attribute selector allows switching between different weather data visualizations.
+
+**Available chart attributes:**
+
+- `temperature_and_precipitation` - Default dataset visualizing temperature curves (high/low) and precipitation bars
+- `apparent_temperature` - Visualizes apparent temperature as line graph
+- `humidity` - Visualizes relative humidity as a line graph
+- `pressure` - Visualizes atmospheric pressure as line graph
+- `uv_index` - Visualizes UV index as a bar graph. Decimal values are rounded to integers as per WHO international standards for public health reporting, ensuring clear risk-category communication.
+
+> [!NOTE]
+> Attributes are only shown in the selector if the data is available from your weather entity. If an attribute is not provided by your weather integration, it will not appear in the dropdown.
+
+> [!NOTE]
+> Currently, only `chart` mode supports selecting the weather attribute.
+
+**Usage:**
+
+The attribute selector can be accessed via:
+
+- **Hold action** (default): Press and hold on the chart area to open the attribute dropdown. This works by default without any additional configuration.
+- **Settings icon**: Set `show_attribute_selector: true` to display a settings icon in the top-right corner of the chart for quick access.
+
+**Example configuration with settings icon:**
+
+```yaml
+type: custom:weather-forecast-card
+entity: weather.home
+forecast:
+  mode: chart
+  show_attribute_selector: true
+```
 
 ## Example
 
@@ -300,31 +386,43 @@ The card can be customized using Home Assistant theme variables. Most colors, si
 
 Add these variables to your Home Assistant theme to customize the card's appearance:
 
-| Variable Name                                           | Default                                | Description                                                                           |
-| :------------------------------------------------------ | :------------------------------------- | :------------------------------------------------------------------------------------ |
-| `weather-forecast-card-wind-low-color`                  | `var(--success-color, #43a047)`        | Wind indicator color for low wind speeds                                              |
-| `weather-forecast-card-wind-medium-color`               | `var(--warning-color, #ffa600)`        | Wind indicator color for medium wind speeds                                           |
-| `weather-forecast-card-wind-high-color`                 | `var(--error-color, #db4437)`          | Wind indicator color for high wind speeds                                             |
-| `weather-forecast-card-temp-cold-color`                 | `#2196f3`                              | Temperature color for cold conditions. Used when `use_color_thresholds` is `true`     |
-| `weather-forecast-card-temp-freezing-color`             | `#4fb3ff`                              | Temperature color for freezing conditions. Used when `use_color_thresholds` is `true` |
-| `weather-forecast-card-temp-chilly-color`               | `#ffeb3b`                              | Temperature color for chilly conditions. Used when `use_color_thresholds` is `true`   |
-| `weather-forecast-card-temp-mild-color`                 | `#4caf50`                              | Temperature color for mild conditions. Used when `use_color_thresholds` is `true`     |
-| `weather-forecast-card-temp-warm-color`                 | `#ff9800`                              | Temperature color for warm conditions. Used when `use_color_thresholds` is `true`     |
-| `weather-forecast-card-temp-hot-color`                  | `#f44336`                              | Temperature color for hot conditions. Used when `use_color_thresholds` is `true`      |
-| `weather-forecast-card-chart-temp-low-line-color`       | `#2196f3`                              | Default chart line color for low temperature. Corresponds to `cold` threshold color.  |
-| `weather-forecast-card-chart-temp-high-line-color`      | `#ff9800`                              | Default chart line color for high temperature. Corresponds to `warm` threshold color. |
-| `weather-forecast-card-chart-label-color`               | `var(--primary-text-color, #000)`      | Default color for chart labels                                                        |
-| `weather-forecast-card-chart-temp-high-label-color`     | `var(--chart-label-color)`             | Chart label color for high temperature                                                |
-| `weather-forecast-card-chart-temp-low-label-color`      | `var(--secondary-text-color, #9b9b9b)` | Chart label color for low temperature                                                 |
-| `weather-forecast-card-chart-precipitation-label-color` | `var(--chart-label-color)`             | Chart label color for precipitation                                                   |
-| `weather-forecast-card-chart-grid-color`                | Color mix 15% opaque text              | Chart grid line color                                                                 |
-| `weather-forecast-card-precipitation-bar-color`         | Color mix 40% blue                     | Precipitation bar color                                                               |
-| `weather-forecast-card-sunrise-color`                   | `var(--orange-color, #ff9800)`         | Sunrise time indicator color                                                          |
-| `weather-forecast-card-sunset-color`                    | `var(--purple-color, #926bc7)`         | Sunset time indicator color                                                           |
-| `weather-forecast-card-day-indicator-color`             | `#056bb8`                              | Background color for day indicator badge                                              |
-| `weather-forecast-card-day-indicator-text-color`        | `#ffffff`                              | Text color for day indicator badge                                                    |
-| `weather-forecast-card-current-conditions-icon-size`    | `64px`                                 | Size of the current weather condition icon                                            |
-| `weather-forecast-card-forecast-conditions-icon-size`   | `28px`                                 | Size of forecast weather condition icons                                              |
+| Variable Name                                           | Default                                | Description                                                                                                                |
+| :------------------------------------------------------ | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| `weather-forecast-card-wind-low-color`                  | `var(--success-color, #43a047)`        | Wind indicator color for low wind speeds                                                                                   |
+| `weather-forecast-card-wind-medium-color`               | `var(--warning-color, #ffa600)`        | Wind indicator color for medium wind speeds                                                                                |
+| `weather-forecast-card-wind-high-color`                 | `var(--error-color, #db4437)`          | Wind indicator color for high wind speeds                                                                                  |
+| `weather-forecast-card-temp-cold-color`                 | `#2196f3`                              | Temperature color for cold conditions. Used when `use_color_thresholds` is `true`                                          |
+| `weather-forecast-card-temp-freezing-color`             | `#4fb3ff`                              | Temperature color for freezing conditions. Used when `use_color_thresholds` is `true`                                      |
+| `weather-forecast-card-temp-chilly-color`               | `#ffeb3b`                              | Temperature color for chilly conditions. Used when `use_color_thresholds` is `true`                                        |
+| `weather-forecast-card-temp-mild-color`                 | `#4caf50`                              | Temperature color for mild conditions. Used when `use_color_thresholds` is `true`                                          |
+| `weather-forecast-card-temp-warm-color`                 | `#ff9800`                              | Temperature color for warm conditions. Used when `use_color_thresholds` is `true`                                          |
+| `weather-forecast-card-temp-hot-color`                  | `#f44336`                              | Temperature color for hot conditions. Used when `use_color_thresholds` is `true`                                           |
+| `weather-forecast-card-chart-temp-low-line-color`       | `#2196f3`                              | Default chart line color for low temperature. Corresponds to `cold` threshold color.                                       |
+| `weather-forecast-card-chart-temp-high-line-color`      | `#ff9800`                              | Default chart line color for high temperature. Corresponds to `warm` threshold color.                                      |
+| `weather-forecast-card-chart-humidity-line-color`       | `var(--blue-color, #2196f3)`           | Chart line color for humidity attribute in chart mode                                                                      |
+| `weather-forecast-card-chart-pressure-line-color`       | `var(--cyan-color, #00bcd4)`           | Chart line color for pressure attribute in chart mode                                                                      |
+| `weather-forecast-card-chart-uv-bar-color`              | `var(--amber-color, #ffc107)`          | Fallback chart bar color for UV index when value is missing/unknown; normal UV bars use `weather-forecast-card-uv-*-color` |
+| `weather-forecast-card-uv-low-color`                    | `#289500`                              | UV index bar color for low risk level (0-2)                                                                                |
+| `weather-forecast-card-uv-moderate-color`               | `#f7e400`                              | UV index bar color for moderate risk level (3-5)                                                                           |
+| `weather-forecast-card-uv-high-color`                   | `#f85900`                              | UV index bar color for high risk level (6-7)                                                                               |
+| `weather-forecast-card-uv-very-high-color`              | `#d8001d`                              | UV index bar color for very high risk level (8-10)                                                                         |
+| `weather-forecast-card-uv-extreme-color`                | `#6b49c8`                              | UV index bar color for extreme risk level (11+)                                                                            |
+| `weather-forecast-card-chart-font-size`                 | `12px`                                 | Font size for chart labels. Can be a number or in pixels. Chart height and padding scale automatically.                    |
+| `weather-forecast-card-chart-label-color`               | `var(--primary-text-color, #000)`      | Default color for chart labels                                                                                             |
+| `weather-forecast-card-chart-temp-high-label-color`     | `var(--chart-label-color)`             | Chart label color for high temperature                                                                                     |
+| `weather-forecast-card-chart-temp-low-label-color`      | `var(--secondary-text-color, #9b9b9b)` | Chart label color for low temperature                                                                                      |
+| `weather-forecast-card-chart-precipitation-label-color` | `var(--chart-label-color)`             | Chart label color for precipitation                                                                                        |
+| `weather-forecast-card-chart-grid-color`                | Color mix 15% opaque text              | Chart grid line color                                                                                                      |
+| `weather-forecast-card-precipitation-bar-color`         | Color mix 40% blue                     | Precipitation bar color                                                                                                    |
+| `weather-forecast-card-sunrise-color`                   | `var(--orange-color, #ff9800)`         | Sunrise time indicator color                                                                                               |
+| `weather-forecast-card-sunset-color`                    | `var(--purple-color, #926bc7)`         | Sunset time indicator color                                                                                                |
+| `weather-forecast-card-day-indicator-color`             | `#056bb8`                              | Background color for day indicator badge                                                                                   |
+| `weather-forecast-card-day-indicator-text-color`        | `#ffffff`                              | Text color for day indicator badge                                                                                         |
+| `weather-forecast-card-current-conditions-icon-size`    | `64px`                                 | Size of the current weather condition icon                                                                                 |
+| `weather-forecast-card-forecast-conditions-icon-size`   | `28px`                                 | Size of forecast weather condition icons                                                                                   |
+
+> [!NOTE]
+> **Chart attribute colors:** When visualizing UV index with `chart` mode, the bar groupings follow the Global Solar UV Index (UVI) risk categories (0–2, 3–5, 6–7, 8–10, 11+). The default bar colors are theme-configurable values (see the table above) and are not an official WHO color standard.
 
 ### Weather Effects Variables
 
@@ -362,12 +460,87 @@ my-custom-theme:
   # Weather Forecast Card customization
   weather-forecast-card-chart-temp-high-line-color: "#ff5722"
 
+  # Chart visualization colors
+  weather-forecast-card-chart-humidity-line-color: "#1976d2"
+  weather-forecast-card-chart-pressure-line-color: "#0097a7"
+  weather-forecast-card-uv-low-color: "#00ff00"
+
   # Weather Forecast Card effects customization
   weather-forecast-card-effects-sun-color: "#fbbf24"
 ```
 
 > [!NOTE]
 > These variables are applied through Home Assistant's theme system. Make sure to reload your theme after making changes.
+
+### Adjusting Font Sizes
+
+The card uses Home Assistant's font size variables. You can customize these via your theme or using [card-mod](https://github.com/thomasloven/lovelace-card-mod).
+
+**Available font size variables:**
+
+| Variable             | Default | Used For                                                                                        |
+| :------------------- | :------ | :---------------------------------------------------------------------------------------------- |
+| `--ha-font-size-3xl` | `28px`  | Current weather conditions and temperature                                                      |
+| `--ha-font-size-xl`  | `20px`  | Current weather conditions and temperature (smaller screens), secondary info icon, chart header |
+| `--ha-font-size-l`   | `16px`  | Wind speed text in wind indicators                                                              |
+| `--ha-font-size-m`   | `14px`  | Forecast labels, current weather attributes, forecast primary time labels                       |
+| `--ha-font-size-s`   | `12px`  | Forecast secondary time labels, simple forecast precipitation amount                            |
+
+**Theme example:**
+
+```yaml
+my-custom-theme:
+  # Adjust font sizes globally for all cards
+  ha-font-size-3xl: 32px
+  ha-font-size-l: 18px
+```
+
+**Card-mod example:**
+
+Configure font size for all elements:
+
+```yaml
+type: custom:weather-forecast-card
+entity: weather.home
+card_mod:
+  style: |
+    ha-card {
+      /* Larger current conditions and temperature */
+      --ha-font-size-3xl: 38px;
+      --ha-font-size-xl: 30px;
+      /* Larger forecast temperatures (simple mode) */
+      --ha-font-size-m: 16px;
+      /* Make simple forecast items wider to avoid text overflow */
+      --forecast-item-width: 75px;
+    }
+```
+
+Or if you want more granular control:
+
+```yaml
+type: custom:weather-forecast-card
+entity: weather.home
+card_mod:
+  style: |
+    ha-card {
+      /* Make simple forecast items wider to avoid text overflow */
+      --forecast-item-width: 70px;
+    }
+    /* Affects only font sizes in the current weather section */
+    .wfc-current-weather {
+      /* Larger current conditions and temperature */
+      --ha-font-size-3xl: 38px;
+      --ha-font-size-xl: 30px;
+    }
+    /* Affects only forecast section */
+    .wfc-forecast {
+      /* Forecast header and temperatures font (simple mode) */
+      --ha-font-size-m: 20px;
+    }
+```
+
+> [!NOTE]
+> Chart labels use a dedicated variable `weather-forecast-card-chart-font-size` (default `12px`) which can be set via themes. See the [Theme Variables](#theme-variables) table above.
 
 ## License
 

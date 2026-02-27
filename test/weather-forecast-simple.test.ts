@@ -9,7 +9,7 @@ import {
   WeatherForecastCardConfig,
 } from "../src/types";
 import { TEST_FORECAST_DAILY, TEST_FORECAST_HOURLY } from "./mocks/test-data";
-import { formatDay, formatHour } from "../src/helpers";
+import { formatDay, formatHourParts } from "../src/helpers";
 
 import "../src/index";
 
@@ -116,15 +116,15 @@ describe("weather-forecast-card simple", () => {
   });
 
   it("should toggle to hourly on tap and render hourly forecast", async () => {
-    const forecastContainer = card.shadowRoot!.querySelector(
-      ".wfc-forecast-container"
-    );
-    expect(forecastContainer).not.toBeNull();
+    const simpleElement = card.shadowRoot!.querySelector("wfc-forecast-simple");
+    expect(simpleElement).not.toBeNull();
 
-    forecastContainer?.dispatchEvent(
-      new MouseEvent("click", {
+    // Dispatch action event directly (actionHandler directive doesn't work in test env)
+    simpleElement?.dispatchEvent(
+      new CustomEvent("action", {
         bubbles: true,
-        cancelable: true,
+        composed: true,
+        detail: { action: "tap" },
       })
     );
 
@@ -139,8 +139,13 @@ describe("weather-forecast-card simple", () => {
     forecastItems.forEach((item, index) => {
       const timeLabel = item.querySelector(".wfc-forecast-slot-time");
       expect(timeLabel).not.toBeNull();
-      expect(timeLabel?.textContent?.trim()).toBe(
-        formatHour(hass, TEST_FORECAST_HOURLY[index].datetime)
+
+      // Hourly uses two-row layout, check primary label
+      const primaryLabel = timeLabel?.querySelector(
+        ".wfc-forecast-slot-time-primary"
+      );
+      expect(primaryLabel?.textContent?.trim()).toBe(
+        formatHourParts(hass, TEST_FORECAST_HOURLY[index].datetime).hour
       );
 
       const temperatureHigh = item.querySelector(

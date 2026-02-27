@@ -1,5 +1,5 @@
 import { merge } from "lodash-es";
-import { property, state } from "lit/decorators.js";
+import { property, query, state } from "lit/decorators.js";
 import { styles } from "./weather-forecast-card.styles";
 import { createWarningText, normalizeDate } from "./helpers";
 import { logger } from "./logger";
@@ -9,7 +9,6 @@ import {
   ForecastMode,
   MAX_TEMPERATURE_PRECISION,
 } from "./types";
-import { classMap } from "lit/directives/class-map.js";
 import {
   LitElement,
   html,
@@ -28,7 +27,9 @@ import {
 import {
   ForecastEvent,
   getForecast,
+  getDailyForecastType,
   subscribeForecast,
+  supportsForecastType,
   supportsRequiredForecastFeatures,
   WeatherEntity,
   ForecastType,
@@ -55,9 +56,12 @@ const DEFAULT_CONFIG: Partial<WeatherForecastCardConfig> = {
   forecast: {
     mode: ForecastMode.Simple,
     show_sun_times: true,
+    use_color_thresholds: true,
+    scroll_to_selected: true,
   },
   forecast_action: {
     tap_action: { action: "toggle-forecast" },
+    hold_action: { action: "select-forecast-attribute" },
   },
   tap_action: { action: "more-info" },
 };
@@ -72,12 +76,13 @@ export class WeatherForecastCard extends LitElement {
   @state() private _currentItemWidth!: number;
   @state() private _currentForecastType: ForecastType = "daily";
   @state() private _isScrollable = false;
+  @query("ha-card") private _haCard?: HTMLElement;
+  @query(".wfc-forecast-container") private _forecastContainer?: HTMLElement;
 
   private _hourlyForecastData?: ForecastAttribute[];
   private _dailyForecastData?: ForecastAttribute[];
 
   private _minForecastItemWidth?: number;
-  private _forecastContainer?: HTMLElement | null = null;
   private _resizeObserver?: ResizeObserver | null = null;
 
   static styles = styles as CSSResultGroup;
@@ -142,14 +147,27 @@ export class WeatherForecastCard extends LitElement {
       );
     }
 
-    this.config = merge({}, DEFAULT_CONFIG, config);
+    // Migrate legacy root-level temperature_entity to current.temperature_entity
+    // Prefer current.temperature_entity if both are defined
+    const migratedConfig = { ...config };
+    if (config.temperature_entity) {
+      if (!config.current?.temperature_entity) {
+        migratedConfig.current = {
+          ...config.current,
+          temperature_entity: config.temperature_entity,
+        };
+      }
+      delete migratedConfig.temperature_entity;
+    }
+
+    this.config = merge({}, DEFAULT_CONFIG, migratedConfig);
     this._currentForecastType = this.config.default_forecast || "daily";
   }
 
   public connectedCallback(): void {
     super.connectedCallback();
 
-    this._minForecastItemWidth = this.getInitialMinForecastItemWidth();
+    this._minForecastItemWidth = this.computeInitialMinForecastItemWidth();
     this.waitForLayout();
 
     if (this.hasUpdated && this.config && this.hass) {
@@ -218,6 +236,8 @@ export class WeatherForecastCard extends LitElement {
       </hui-warning>`;
     }
 
+    const isTwiceDailyEntity =
+      getDailyForecastType(stateObject) === "twice_daily";
     const isChartMode = this.config.forecast?.mode === ForecastMode.Chart;
     const currentForecast = this.getCurrentForecast();
 
@@ -254,42 +274,29 @@ export class WeatherForecastCard extends LitElement {
             : nothing}
           ${this.config.show_forecast === false
             ? nothing
-            : html`<div
-                class="${classMap({
-                  "wfc-forecast-container": true,
-                  "is-scrollable": this._isScrollable,
-                })}"
-                .actionHandler=${actionHandler({
-                  hasHold: hasAction(
-                    this.config.forecast_action?.hold_action as ActionConfig
-                  ),
-                  hasDoubleClick: hasAction(
-                    this.config.forecast_action
-                      ?.double_tap_action as ActionConfig
-                  ),
-                })}
-                @action=${this.onForecastAction}
-              >
+            : html`<div class="wfc-forecast-container">
                 ${isChartMode
-                  ? html`
-                      <wfc-forecast-chart
-                        .hass=${this.hass}
-                        .config=${this.config}
-                        .weatherEntity=${stateObject}
-                        .forecast=${currentForecast}
-                        .forecastType=${this._currentForecastType}
-                        .itemWidth=${this._currentItemWidth}
-                      ></wfc-forecast-chart>
-                    `
-                  : html`
-                      <wfc-forecast-simple
-                        .hass=${this.hass}
-                        .config=${this.config}
-                        .weatherEntity=${stateObject}
-                        .forecast=${currentForecast}
-                        .forecastType=${this._currentForecastType}
-                      ></wfc-forecast-simple>
-                    `}
+                  ? html`<wfc-forecast-chart
+                      @action=${this.onForecastAction}
+                      .hass=${this.hass}
+                      .config=${this.config}
+                      .weatherEntity=${stateObject}
+                      .forecast=${currentForecast}
+                      .forecastType=${this._currentForecastType}
+                      .isTwiceDailyEntity=${isTwiceDailyEntity}
+                      .itemWidth=${this._currentItemWidth}
+                      .isScrollable=${this._isScrollable}
+                    ></wfc-forecast-chart>`
+                  : html`<wfc-forecast-simple
+                      @action=${this.onForecastAction}
+                      .hass=${this.hass}
+                      .config=${this.config}
+                      .weatherEntity=${stateObject}
+                      .forecast=${currentForecast}
+                      .forecastType=${this._currentForecastType}
+                      .isTwiceDailyEntity=${isTwiceDailyEntity}
+                      .isScrollable=${this._isScrollable}
+                    ></wfc-forecast-simple>`}
               </div>`}
         </div>
       </ha-card>
@@ -298,12 +305,6 @@ export class WeatherForecastCard extends LitElement {
 
   private waitForLayout(): void {
     if (!this.isConnected) return;
-
-    if (!this._forecastContainer) {
-      this._forecastContainer = this.renderRoot?.querySelector(
-        ".wfc-forecast-container"
-      );
-    }
 
     const width = this._forecastContainer?.clientWidth || 0;
 
@@ -333,13 +334,16 @@ export class WeatherForecastCard extends LitElement {
     this.layoutForecastItems(this._forecastContainer.clientWidth);
   }
 
-  private getInitialMinForecastItemWidth(): number {
-    const computedStyle = getComputedStyle(this);
-    const itemWidth = computedStyle
-      .getPropertyValue("--forecast-item-width")
-      .trim();
+  private computeInitialMinForecastItemWidth(): number {
+    const style = getComputedStyle(this);
+    const minItemWidthSimple =
+      parseInt(style.getPropertyValue("--wfc-min-item-width-simple")) || 65;
+    const minItemWidthChart =
+      parseInt(style.getPropertyValue("--wfc-min-item-width-chart")) || 55;
 
-    return parseInt(itemWidth || "60", 10);
+    return this.config?.forecast?.mode === ForecastMode.Simple
+      ? minItemWidthSimple
+      : minItemWidthChart;
   }
 
   private processForecastData() {
@@ -347,9 +351,10 @@ export class WeatherForecastCard extends LitElement {
       return;
     }
 
-    const { attributes } = this.hass!.states[
+    const weatherEntity = this.hass!.states[
       this.config!.entity
     ] as WeatherEntity;
+    const { attributes } = weatherEntity;
 
     if (!attributes) {
       return;
@@ -363,10 +368,11 @@ export class WeatherForecastCard extends LitElement {
       this._hourlyForecastEvent,
       "hourly"
     );
+    // Use the effective daily type (daily or twice_daily) for processing
     const dailyForecastData = getForecast(
       attributes,
       this._dailyForecastEvent,
-      "daily"
+      getDailyForecastType(weatherEntity)
     );
 
     if (!hourlyForecastData && !dailyForecastData) {
@@ -403,6 +409,43 @@ export class WeatherForecastCard extends LitElement {
       );
     }
 
+    // Auto-switch to available forecast type if current type has no data
+    // BUT only if we've received both forecast events (to avoid switching
+    // prematurely when one forecast is just loading slower than the other)
+    const currentForecastData = this.getCurrentForecast();
+    if (!currentForecastData || currentForecastData.length === 0) {
+      const hasBothEvents =
+        this._dailyForecastEvent != null && this._hourlyForecastEvent != null;
+
+      // Check if entity supports any daily-like forecast (daily or twice_daily)
+      const effectiveDailyType = getDailyForecastType(weatherEntity);
+      const hasDailyLike = effectiveDailyType !== undefined;
+      const isInDailyLikeView =
+        this._currentForecastType === "daily" ||
+        this._currentForecastType === "twice_daily";
+      const shouldAutoSwitch =
+        hasBothEvents ||
+        (this._currentForecastType === "hourly" &&
+          !supportsForecastType(weatherEntity, "hourly")) ||
+        (isInDailyLikeView && !hasDailyLike);
+
+      if (shouldAutoSwitch) {
+        if (this._currentForecastType === "hourly" && this._dailyForecastData) {
+          logger.debug(
+            "No hourly forecast data available, switching to daily forecast"
+          );
+
+          this._currentForecastType = effectiveDailyType || "daily";
+        } else if (isInDailyLikeView && this._hourlyForecastData) {
+          logger.debug(
+            "No daily forecast data available, switching to hourly forecast"
+          );
+
+          this._currentForecastType = "hourly";
+        }
+      }
+    }
+
     // Recalculate layout if the number of items changed
     const newLength = this.getCurrentForecast().length;
 
@@ -417,10 +460,29 @@ export class WeatherForecastCard extends LitElement {
   }
 
   private _toggleForecastView(selectedForecast?: ForecastAttribute) {
-    const willSwitchToHourly = this._currentForecastType === "daily";
+    const isInDailyLikeView =
+      this._currentForecastType === "daily" ||
+      this._currentForecastType === "twice_daily";
+    const willSwitchToHourly = isInDailyLikeView;
+    const targetForecastData = willSwitchToHourly
+      ? this._hourlyForecastData
+      : this._dailyForecastData;
 
-    this._currentForecastType =
-      this._currentForecastType === "daily" ? "hourly" : "daily";
+    // Toggle between hourly and the effective daily type (daily or twice_daily)
+    const weatherEntity = this.hass?.states[this.config!.entity];
+    const effectiveDailyType = getDailyForecastType(weatherEntity) || "daily";
+
+    // Don't toggle if the target forecast type has no data
+    if (!targetForecastData || targetForecastData.length === 0) {
+      logger.debug(
+        `Cannot toggle to ${willSwitchToHourly ? "hourly" : effectiveDailyType} forecast - no data available`
+      );
+      return;
+    }
+
+    this._currentForecastType = isInDailyLikeView
+      ? "hourly"
+      : effectiveDailyType;
 
     if (!selectedForecast || !this.config?.forecast?.scroll_to_selected) {
       return;
@@ -504,50 +566,79 @@ export class WeatherForecastCard extends LitElement {
       return;
     }
 
+    if (this.config.show_forecast === false) {
+      return;
+    }
+
     if (
       !supportsRequiredForecastFeatures(this.hass.states[this.config.entity])
     ) {
-      logger.warn("Weather entity does not support all forecast features.");
+      logger.warn(
+        "Weather entity does not support forecast. Cannot display forecast data."
+      );
       return;
     }
 
     logger.debug("Subscribing to forecast events");
 
-    try {
-      this._dailySubscription = Promise.resolve(
-        subscribeForecast(this.hass!, this.config!.entity, "daily", (event) => {
-          this._dailyForecastEvent = event;
-          this.processForecastData();
-        })
-      );
-    } catch (error: unknown) {
-      if (isInvalidEntityIdError(error)) {
-        setTimeout(() => {
-          this._dailyForecastEvent = undefined;
-        }, 2000);
-      }
-      throw error;
+    const weatherEntity = this.hass.states[this.config.entity];
+
+    // Subscribe to the effective daily type (daily preferred, twice_daily as fallback)
+    const effectiveDailyType = getDailyForecastType(weatherEntity);
+
+    // Update current forecast type if we're in daily view but entity only supports twice_daily
+    if (
+      effectiveDailyType === "twice_daily" &&
+      this._currentForecastType === "daily"
+    ) {
+      this._currentForecastType = "twice_daily";
     }
 
-    try {
-      this._hourlySubscription = Promise.resolve(
-        subscribeForecast(
-          this.hass!,
-          this.config!.entity,
-          "hourly",
-          (event) => {
-            this._hourlyForecastEvent = event;
-            this.processForecastData();
-          }
-        )
-      );
-    } catch (error: unknown) {
-      if (isInvalidEntityIdError(error)) {
-        setTimeout(() => {
-          this._hourlyForecastEvent = undefined;
-        }, 2000);
+    if (effectiveDailyType) {
+      logger.debug(`Subscribing to ${effectiveDailyType} forecast`);
+      try {
+        this._dailySubscription = Promise.resolve(
+          subscribeForecast(
+            this.hass!,
+            this.config!.entity,
+            effectiveDailyType,
+            (event) => {
+              this._dailyForecastEvent = event;
+              this.processForecastData();
+            }
+          )
+        );
+      } catch (error: unknown) {
+        if (isInvalidEntityIdError(error)) {
+          setTimeout(() => {
+            this._dailyForecastEvent = undefined;
+          }, 2000);
+        }
+        throw error;
       }
-      throw error;
+    }
+
+    if (supportsForecastType(weatherEntity, "hourly")) {
+      try {
+        this._hourlySubscription = Promise.resolve(
+          subscribeForecast(
+            this.hass!,
+            this.config!.entity,
+            "hourly",
+            (event) => {
+              this._hourlyForecastEvent = event;
+              this.processForecastData();
+            }
+          )
+        );
+      } catch (error: unknown) {
+        if (isInvalidEntityIdError(error)) {
+          setTimeout(() => {
+            this._hourlyForecastEvent = undefined;
+          }, 2000);
+        }
+        throw error;
+      }
     }
   }
 
@@ -560,7 +651,9 @@ export class WeatherForecastCard extends LitElement {
   }
 
   private layoutForecastItems(containerWidth: number) {
-    if (containerWidth <= 0 || !this._minForecastItemWidth) return;
+    if (containerWidth <= 0 || !this._minForecastItemWidth || !this._haCard) {
+      return;
+    }
 
     const items = this.getCurrentForecast();
 
@@ -581,8 +674,11 @@ export class WeatherForecastCard extends LitElement {
     this._currentItemWidth = calculatedItemWidth + gap;
     this._isScrollable = items.length > itemsPerView;
 
-    this.style.setProperty("--forecast-item-gap", `${gap}px`);
-    this.style.setProperty("--forecast-item-width", `${calculatedItemWidth}px`);
+    this._haCard.style.setProperty("--forecast-item-gap", `${gap}px`);
+    this._haCard.style.setProperty(
+      "--forecast-item-width",
+      `${calculatedItemWidth}px`
+    );
   }
 
   private haveWeatherUnitsChanged(changedProps: PropertyValues): boolean {

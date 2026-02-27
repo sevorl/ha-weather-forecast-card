@@ -24,6 +24,16 @@ const mapConditionForNight = (condition: string, isNightTime: boolean): string =
   return normalized;
 };
 
+export interface HourParts {
+  hour: string;
+  suffix?: string;
+}
+
+export interface TimeParts {
+  time: string;
+  suffix?: string;
+}
+
 export const createWarningText = (
   hass: HomeAssistant | undefined,
   entity: string
@@ -37,29 +47,6 @@ export const createWarningText = (
     : hass.localize("ui.panel.lovelace.warning.starting");
 };
 
-export const formatHour = (
-  hass: HomeAssistant | undefined,
-  datetime: string | Date,
-  force24Hour = false
-): string => {
-  return toDate(datetime).toLocaleTimeString(getLocale(hass), {
-    hour: "numeric",
-    hour12: force24Hour ? false : useAmPm(hass),
-  });
-};
-
-export const formatTime = (
-  hass: HomeAssistant | undefined,
-  datetime: string | Date,
-  force24Hour = false
-): string => {
-  return toDate(datetime).toLocaleTimeString(getLocale(hass), {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: force24Hour ? false : useAmPm(hass),
-  });
-};
-
 export const formatDay = (
   hass: HomeAssistant | undefined,
   datetime: string | Date
@@ -67,6 +54,144 @@ export const formatDay = (
   return toDate(datetime).toLocaleDateString(getLocale(hass), {
     weekday: "short",
   });
+};
+
+export const formatDayOfMonth = (
+  hass: HomeAssistant | undefined,
+  datetime: string | Date
+): string => {
+  return toDate(datetime).toLocaleDateString(getLocale(hass), {
+    day: "numeric",
+  });
+};
+
+export const formatHourParts = (
+  hass: HomeAssistant | undefined,
+  datetime: string | Date
+): HourParts => {
+  const date = toDate(datetime);
+  const locale = getLocale(hass);
+  const isAmPm = useAmPm(hass);
+
+  // Try to extract parts using Intl.DateTimeFormat for proper locale handling
+  try {
+    const formatter = new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      hour12: isAmPm,
+    });
+    const parts = formatter.formatToParts(date);
+
+    const hourPart = parts.find((p) => p.type === "hour");
+    const dayPeriodPart = parts.find((p) => p.type === "dayPeriod");
+
+    if (hourPart) {
+      if (dayPeriodPart) {
+        return {
+          hour: hourPart.value,
+          suffix: dayPeriodPart.value,
+        };
+      }
+
+      const hourIndex = parts.indexOf(hourPart);
+      const suffixLiteral = parts
+        .slice(hourIndex + 1)
+        .filter((p) => p.type === "literal")
+        .map((p) => p.value)
+        .join("");
+
+      if (suffixLiteral && suffixLiteral.trim()) {
+        return {
+          hour: hourPart.value,
+          suffix: suffixLiteral.trim(),
+        };
+      }
+
+      return { hour: hourPart.value };
+    }
+  } catch {
+    // Fallback below
+  }
+
+  // Fallback: extract numeric portion from formatted string
+  const fullTime = date.toLocaleTimeString(locale, {
+    hour: "numeric",
+    hour12: isAmPm,
+  });
+  const numericMatch = fullTime.match(/\d+/);
+  const hour = numericMatch ? numericMatch[0] : fullTime;
+  const suffix = fullTime.replace(/\d+\s*/, "").trim();
+
+  return suffix ? { hour, suffix } : { hour };
+};
+
+export const formatTimeParts = (
+  hass: HomeAssistant | undefined,
+  datetime: string | Date
+): TimeParts => {
+  const date = toDate(datetime);
+  const locale = getLocale(hass);
+  const isAmPm = useAmPm(hass);
+
+  // Try to extract parts using Intl.DateTimeFormat for proper locale handling
+  try {
+    const formatter = new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: isAmPm,
+    });
+    const parts = formatter.formatToParts(date);
+
+    const hourPart = parts.find((p) => p.type === "hour");
+    const minutePart = parts.find((p) => p.type === "minute");
+    const dayPeriodPart = parts.find((p) => p.type === "dayPeriod");
+
+    if (hourPart && minutePart) {
+      const hourIndex = parts.indexOf(hourPart);
+      const minuteIndex = parts.indexOf(minutePart);
+      const separator = parts
+        .slice(hourIndex + 1, minuteIndex)
+        .map((p) => p.value)
+        .join("");
+
+      const time = `${hourPart.value}${separator}${minutePart.value}`;
+
+      if (dayPeriodPart) {
+        return {
+          time,
+          suffix: dayPeriodPart.value,
+        };
+      }
+
+      const suffixLiteral = parts
+        .slice(minuteIndex + 1)
+        .filter((p) => p.type === "literal")
+        .map((p) => p.value)
+        .join("");
+
+      if (suffixLiteral && suffixLiteral.trim()) {
+        return {
+          time,
+          suffix: suffixLiteral.trim(),
+        };
+      }
+
+      return { time };
+    }
+  } catch {
+    // Fallback below
+  }
+
+  // Fallback: extract time portion from formatted string
+  const fullTime = date.toLocaleTimeString(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: isAmPm,
+  });
+  const timeMatch = fullTime.match(/\d+[:.]\d+/);
+  const time = timeMatch ? timeMatch[0] : fullTime;
+  const suffix = fullTime.replace(/\d+[:.]\d+\s*/, "").trim();
+
+  return suffix ? { time, suffix } : { time };
 };
 
 export const normalizeDate = (dateString: string) => {

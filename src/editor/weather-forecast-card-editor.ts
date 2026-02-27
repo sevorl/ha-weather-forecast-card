@@ -10,7 +10,10 @@ import {
   LocalizeFunc,
 } from "custom-card-helpers";
 import {
+  CHART_ATTRIBUTES,
   CURRENT_WEATHER_ATTRIBUTES,
+  CurrentWeatherAttributes,
+  CurrentWeatherAttributeConfig,
   ExtendedHomeAssistant,
   MAX_TEMPERATURE_PRECISION,
   WEATHER_EFFECTS,
@@ -21,6 +24,23 @@ import {
 } from "../types";
 import en from "../translations/en.json";
 import de from "../translations/de.json";
+
+// Device class mapping for attribute entity selectors
+const ATTRIBUTE_DEVICE_CLASS_MAP: Record<
+  CurrentWeatherAttributes,
+  string | string[] | undefined
+> = {
+  humidity: "humidity",
+  pressure: ["pressure", "atmospheric_pressure"],
+  wind_speed: "wind_speed",
+  wind_gust_speed: "wind_speed",
+  visibility: "distance",
+  dew_point: "temperature",
+  apparent_temperature: "temperature",
+  uv_index: undefined, // any sensor
+  ozone: undefined, // any sensor
+  cloud_coverage: undefined, // any sensor
+};
 
 type HaFormSelector =
   | { entity: { domain?: string; device_class?: string | string[] } }
@@ -44,6 +64,8 @@ type HaFormSchema = {
     | `forecast.${keyof WeatherForecastCardForecastConfig}`
     | `current.${keyof WeatherForecastCardCurrentConfig}`
     | `forecast_action.${keyof WeatherForecastCardForecastActionConfig}`
+    | `current.attribute_entity_${CurrentWeatherAttributes}`
+    | "attribute_entities"
     | "";
   type?: string;
   iconPath?: TemplateResult;
@@ -94,12 +116,17 @@ export class WeatherForecastCardEditor
   }
 
   private _schema = memoizeOne(
-    (localize: LocalizeFunc): HaFormSchema[] =>
+    (
+      localize: LocalizeFunc,
+      selectedAttributes: CurrentWeatherAttributes[],
+      mode?: string
+    ): HaFormSchema[] =>
       [
         ...this._genericSchema(localize),
         ...this._currentWeatherSchema(localize),
         ...this._forecastSchema(localize),
-        ...this._interactionsSchema(),
+        ...this._interactionsSchema(mode),
+        ...this._attributeEntitiesSchema(selectedAttributes),
         ...this._advancedSchema(),
       ] as const
   );
@@ -115,13 +142,6 @@ export class WeatherForecastCardEditor
       {
         name: "name",
         selector: { text: {} },
-        optional: true,
-      },
-      {
-        name: "temperature_entity",
-        selector: {
-          entity: { domain: "sensor", device_class: "temperature" },
-        },
         optional: true,
       },
       {
@@ -194,6 +214,13 @@ export class WeatherForecastCardEditor
   private _currentWeatherSchema = (localize: LocalizeFunc): HaFormSchema[] =>
     [
       {
+        name: "current.temperature_entity",
+        selector: {
+          entity: { domain: "sensor", device_class: "temperature" },
+        },
+        optional: true,
+      },
+      {
         name: "current.show_attributes",
         default: false,
         optional: true,
@@ -248,6 +275,23 @@ export class WeatherForecastCardEditor
         optional: true,
       },
       {
+        name: "forecast.default_chart_attribute",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: CHART_ATTRIBUTES.map((attribute) => ({
+              value: attribute,
+              label:
+                attribute === "temperature_and_precipitation"
+                  ? `${localize("ui.card.weather.attributes.temperature") || "Temperature"}, ${localize("ui.card.weather.attributes.precipitation") || "Precipitation"}`
+                  : localize(`ui.card.weather.attributes.${attribute}`) ||
+                    capitalize(attribute).replace(/_/g, " "),
+            })),
+          },
+        },
+        optional: true,
+      },
+      {
         name: "forecast.extra_attribute",
         optional: true,
         selector: {
@@ -287,7 +331,7 @@ export class WeatherForecastCardEditor
       {
         name: "forecast.scroll_to_selected",
         selector: { boolean: {} },
-        default: false,
+        default: true,
         optional: true,
       },
       {
@@ -316,6 +360,12 @@ export class WeatherForecastCardEditor
       {
         name: "forecast.use_color_thresholds",
         selector: { boolean: {} },
+        default: true,
+        optional: true,
+      },
+      {
+        name: "forecast.show_attribute_selector",
+        selector: { boolean: {} },
         default: false,
         optional: true,
       },
@@ -337,37 +387,54 @@ export class WeatherForecastCardEditor
       },
     ] as const;
 
-  private _interactionsSchema = (): HaFormSchema[] =>
-    [
+  private _interactionsSchema = (mode?: string): HaFormSchema[] => {
+    const optionalActions: (keyof WeatherForecastCardForecastActionConfig)[] =
+      [];
+    const forecastActionSchema: HaFormSchema[] = [
+      {
+        name: "forecast_action.tap_action",
+        selector: {
+          ui_action: {
+            default_action: "toggle-forecast",
+          },
+        },
+      },
+    ];
+
+    if (mode === "chart") {
+      optionalActions.push("double_tap_action");
+      forecastActionSchema.push({
+        name: "forecast_action.hold_action",
+        selector: {
+          ui_action: {
+            default_action: "select-forecast-attribute",
+          },
+        },
+      });
+    } else {
+      optionalActions.push("hold_action", "double_tap_action");
+    }
+
+    forecastActionSchema.push({
+      name: "",
+      type: "optional_actions",
+      flatten: true,
+      schema: optionalActions.map((action) => ({
+        name: `forecast_action.${action}` as const,
+        selector: {
+          ui_action: {
+            default_action: "none" as const,
+          },
+        },
+      })),
+    });
+
+    return [
       {
         name: "forecast_interactions",
         type: "expandable",
         flatten: true,
-        schema: [
-          {
-            name: "forecast_action.tap_action",
-            selector: {
-              ui_action: {
-                default_action: "toggle-forecast",
-              },
-            },
-          },
-          {
-            name: "",
-            type: "optional_actions",
-            flatten: true,
-            schema: (["hold_action", "double_tap_action"] as const).map(
-              (action) => ({
-                name: `forecast_action.${action}`,
-                selector: {
-                  ui_action: {
-                    default_action: "none" as const,
-                  },
-                },
-              })
-            ),
-          },
-        ],
+        schema: forecastActionSchema,
       },
       {
         name: "interactions",
@@ -400,6 +467,37 @@ export class WeatherForecastCardEditor
         ],
       },
     ] as const;
+  };
+
+  private _attributeEntitiesSchema = (
+    selectedAttributes: CurrentWeatherAttributes[]
+  ): HaFormSchema[] => {
+    if (selectedAttributes.length === 0) {
+      return [];
+    }
+
+    const attributeEntitySchemas: HaFormSchema[] = selectedAttributes.map(
+      (attribute) => {
+        const deviceClass = ATTRIBUTE_DEVICE_CLASS_MAP[attribute];
+        return {
+          name: `current.attribute_entity_${attribute}`,
+          optional: true,
+          selector: deviceClass
+            ? { entity: { domain: "sensor", device_class: deviceClass } }
+            : { entity: { domain: "sensor" } },
+        };
+      }
+    );
+
+    return [
+      {
+        name: "attribute_entities",
+        type: "expandable",
+        flatten: true,
+        schema: attributeEntitySchemas,
+      },
+    ];
+  };
 
   private _advancedSchema = (): HaFormSchema[] =>
     [
@@ -432,9 +530,13 @@ export class WeatherForecastCardEditor
       return nothing;
     }
 
-    const schema = this._schema(this.localize.bind(this));
-
     const data = denormalizeConfig(this._config);
+    const selectedAttributes = this._getSelectedAttributes(data);
+    const schema = this._schema(
+      this.localize.bind(this),
+      selectedAttributes,
+      data["forecast.mode"]
+    );
 
     return html`
       <ha-form
@@ -449,7 +551,42 @@ export class WeatherForecastCardEditor
     `;
   }
 
+  private _getSelectedAttributes(
+    data: Record<string, any>
+  ): CurrentWeatherAttributes[] {
+    const showAttributes = data["current.show_attributes"];
+
+    if (!showAttributes) {
+      return [];
+    }
+
+    if (Array.isArray(showAttributes)) {
+      // Handle mixed array of strings and objects
+      return showAttributes.map(
+        (item: string | CurrentWeatherAttributeConfig) =>
+          (typeof item === "string"
+            ? item
+            : item.name) as CurrentWeatherAttributes
+      );
+    }
+
+    return [];
+  }
+
   private _computeLabel = (schema: HaFormSchema): string | undefined => {
+    if (schema.name.startsWith("current.attribute_entity_")) {
+      const attribute = schema.name.replace("current.attribute_entity_", "");
+      const attributeLabel =
+        this.localize(`ui.card.weather.attributes.${attribute}`) ||
+        capitalize(attribute).replace(/_/g, " ");
+      const entityLabel = (
+        this.hass!.localize("ui.panel.lovelace.editor.card.generic.entity") ||
+        "entity"
+      ).toLocaleLowerCase();
+
+      return `${attributeLabel} ${entityLabel}`;
+    }
+
     const name = schema.name.startsWith("forecast_action.")
       ? schema.name.split(".")[1]
       : schema.name;
@@ -463,7 +600,7 @@ export class WeatherForecastCardEditor
         ).toLocaleLowerCase()})`;
       case "name":
         return this.hass.localize("ui.panel.lovelace.editor.card.generic.name");
-      case "temperature_entity":
+      case "current.temperature_entity":
         return `${this.hass!.localize("ui.card.weather.attributes.temperature")} ${(
           this.hass!.localize("ui.panel.lovelace.editor.card.generic.entity") ||
           "entity"
@@ -525,6 +662,10 @@ export class WeatherForecastCardEditor
         );
       case "forecast.use_color_thresholds":
         return "Use color thresholds";
+      case "forecast.show_attribute_selector":
+        return "Show forecast attribute selector";
+      case "forecast.default_chart_attribute":
+        return "Default chart forecast attribute";
       case "forecast.hourly_group_size":
         return "Hourly forecast group size";
       case "forecast.hourly_slots":
@@ -543,6 +684,12 @@ export class WeatherForecastCardEditor
         );
       case "show_condition_effects":
         return "Show condition effects";
+      case "attribute_entities":
+        return `${
+          this.hass!.localize(
+            "ui.panel.lovelace.editor.card.generic.attribute"
+          ) || "attribute"
+        } ${(this.hass!.localize("ui.panel.lovelace.editor.card.generic.entities") || "entities").toLocaleLowerCase()}`;
       default:
         return this.hass!.localize(
           `ui.panel.lovelace.editor.card.generic.${name}`
@@ -552,7 +699,7 @@ export class WeatherForecastCardEditor
 
   private _computeHelper = (schema: HaFormSchema): string | undefined => {
     switch (schema.name) {
-      case "temperature_entity":
+      case "current.temperature_entity":
         return "Optional temperature sensor entity to override the weather entity's temperature.";
       case "default_forecast":
         return "Select the default forecast type to show when forecasts are enabled. Users can still toggle between hourly and daily forecasts if both are available.";
@@ -589,6 +736,10 @@ export class WeatherForecastCardEditor
         );
       case "forecast.use_color_thresholds":
         return "Replaces solid temperature lines with a gradient based on actual values when using forecast chart mode.";
+      case "forecast.show_attribute_selector":
+        return "When enabled and using chart mode, shows a selector above the forecast to choose which weather attribute to display.";
+      case "forecast.default_chart_attribute":
+        return "The forecast attribute to visualize by default in chart mode.";
       case "forecast.hourly_group_size":
         return "Aggregate hourly forecast data into groups to reduce the number of forecast entries shown.";
       case "forecast.hourly_slots":
@@ -603,6 +754,8 @@ export class WeatherForecastCardEditor
         return "Overrides the friendly name of the entity.";
       case "show_condition_effects":
         return "Select which weather conditions initiate visual effects and animations on the card.";
+      case "attribute_entities":
+        return "Override weather attribute values with custom sensor entities.";
       default:
         return undefined;
     }
@@ -628,6 +781,9 @@ export class WeatherForecastCardEditor
 
     const newConfig = moveDottedKeysToNested(config);
 
+    // Remove legacy root-level temperature_entity (now under current.temperature_entity)
+    delete newConfig.temperature_entity;
+
     if (newConfig?.forecast?.extra_attribute === "none") {
       delete newConfig.forecast.extra_attribute;
     }
@@ -642,13 +798,43 @@ export class WeatherForecastCardEditor
       }
     }
 
-    if (
-      Array.isArray(newConfig?.current?.show_attributes) &&
-      CURRENT_WEATHER_ATTRIBUTES.every((attribute) =>
-        newConfig.current.show_attributes.includes(attribute)
-      )
-    ) {
-      newConfig.current.show_attributes = true;
+    // Convert show_attributes to object format if custom entities are specified
+    if (newConfig?.current) {
+      const attributeEntities: Record<string, string> = {};
+
+      for (const key of Object.keys(newConfig.current)) {
+        if (key.startsWith("attribute_entity_")) {
+          const attribute = key.replace(
+            "attribute_entity_",
+            ""
+          ) as CurrentWeatherAttributes;
+          const entity = newConfig.current[key];
+          if (entity) {
+            attributeEntities[attribute] = entity;
+          }
+          delete newConfig.current[key];
+        }
+      }
+
+      if (Array.isArray(newConfig.current.show_attributes)) {
+        const hasCustomEntities = Object.keys(attributeEntities).length > 0;
+        const allSelected = CURRENT_WEATHER_ATTRIBUTES.every((attribute) =>
+          newConfig.current.show_attributes.includes(attribute)
+        );
+
+        if (hasCustomEntities) {
+          newConfig.current.show_attributes =
+            newConfig.current.show_attributes.map((attr: string) => {
+              const entity = attributeEntities[attr];
+              if (entity) {
+                return { name: attr, entity };
+              }
+              return attr;
+            });
+        } else if (allSelected) {
+          newConfig.current.show_attributes = true;
+        }
+      }
     }
 
     fireEvent(this, "config-changed", { config: newConfig });
@@ -657,7 +843,11 @@ export class WeatherForecastCardEditor
   private localize = (key: string): string => {
     let result: string | undefined;
 
-    if (this._config?.entity && key.startsWith("ui.card.weather.attributes")) {
+    if (
+      this._config?.entity &&
+      key !== "ui.card.weather.attributes.precipitation" && // Precipitation is not yet supported as entity attribute
+      key.startsWith("ui.card.weather.attributes")
+    ) {
       const entity = this.hass.states[this._config.entity];
 
       if (entity) {
@@ -714,12 +904,40 @@ const denormalizeConfig = (obj: Record<string, any>) => {
         ? "show_current"
         : "show_forecast";
 
+  // Migrate legacy root-level temperature_entity to current.temperature_entity
+  // Prefer current.temperature_entity if both are defined
+  if (result.temperature_entity && !result["current.temperature_entity"]) {
+    result["current.temperature_entity"] = result.temperature_entity;
+  }
+  delete result.temperature_entity;
+
   if (result.show_condition_effects === true) {
     result.show_condition_effects = [...WEATHER_EFFECTS];
   }
 
   if (result["current.show_attributes"] === true) {
     result["current.show_attributes"] = [...CURRENT_WEATHER_ATTRIBUTES];
+  }
+
+  // Handle show_attributes that may contain objects with entity references
+  const showAttrs = result["current.show_attributes"];
+  if (Array.isArray(showAttrs)) {
+    // Extract attribute entities and normalize the array
+    const normalizedAttrs: string[] = [];
+
+    for (const item of showAttrs) {
+      if (typeof item === "string") {
+        normalizedAttrs.push(item);
+      } else if (typeof item === "object" && item.name) {
+        normalizedAttrs.push(item.name);
+        // Store entity in flattened format for the form
+        if (item.entity) {
+          result[`current.attribute_entity_${item.name}`] = item.entity;
+        }
+      }
+    }
+
+    result["current.show_attributes"] = normalizedAttrs;
   }
 
   return result;

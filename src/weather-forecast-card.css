@@ -44,14 +44,33 @@
     --weather-forecast-card-chart-precipitation-label-color,
     var(--wfc-chart-label-color)
   );
+  /* Fallbacks for iOS 15 / Safari 15 (no color-mix support) */
   --wfc-chart-grid-color: var(
     --weather-forecast-card-chart-grid-color,
-    color-mix(in srgb, var(--primary-text-color, #000) 15%, transparent)
+    rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.15)
   );
   --wfc-precipitation-bar-color: var(
     --weather-forecast-card-precipitation-bar-color,
-    color-mix(in srgb, var(--blue-color, #2196f3) 40%, transparent)
+    rgba(33, 150, 243, 0.4)
   );
+  --wfc-chart-humidity-line-color: var(
+    --weather-forecast-card-chart-humidity-line-color,
+    var(--blue-color, #2196f3)
+  );
+  --wfc-chart-pressure-line-color: var(
+    --weather-forecast-card-chart-pressure-line-color,
+    var(--cyan-color, #00bcd4)
+  );
+  --wfc-chart-uv-bar-color: var(
+    --weather-forecast-card-chart-uv-bar-color,
+    var(--amber-color, #ffc107)
+  );
+  --wfc-uv-low: var(--weather-forecast-card-uv-low-color, #289500);
+  --wfc-uv-moderate: var(--weather-forecast-card-uv-moderate-color, #f7e400);
+  --wfc-uv-high: var(--weather-forecast-card-uv-high-color, #f85900);
+  --wfc-uv-very-high: var(--weather-forecast-card-uv-very-high-color, #d8001d);
+  --wfc-uv-extreme: var(--weather-forecast-card-uv-extreme-color, #6b49c8);
+  --wfc-chart-font-size: var(--weather-forecast-card-chart-font-size, 12px);
   --wfc-sunrise-color: var(
     --weather-forecast-card-sunrise-color,
     var(--orange-color, #ff9800)
@@ -69,7 +88,15 @@
     #ffffff
   );
   --wfc-component-gap: var(--ha-space-3, 12px);
-  --forecast-item-width: 50px; /* Initial minimum value. Updated in JS */
+  --wfc-min-item-width-simple: var(
+    --weather-forecast-card-min-item-width-simple,
+    65px
+  );
+  --wfc-min-item-width-chart: var(
+    --weather-forecast-card-min-item-width-chart,
+    55px
+  );
+  --forecast-item-width: var(--wfc-min-item-width-simple); /* Initial minimum value. Updated in JS */
   --forecast-item-gap: 0px; /* Initial minimum value. Updated in JS */
   --forecast-precipitation-bar-max-height: calc(
     var(--ha-font-size-s, 12px) + 2px
@@ -77,13 +104,27 @@
   --fade-width: 15px;
   --forecast-conditions-icon-size: var(
     --weather-forecast-card-forecast-conditions-icon-size,
-    28px
+    36px
   );
   --current-conditions-icon-size: var(
     --weather-forecast-card-current-conditions-icon-size,
     64px
   );
   --indicator-width: 20px;
+}
+
+/* Modern browsers with color-mix support */
+@supports (color: color-mix(in srgb, red, blue)) {
+  :host {
+    --wfc-chart-grid-color: var(
+      --weather-forecast-card-chart-grid-color,
+      color-mix(in srgb, var(--primary-text-color, #000) 15%, transparent)
+    );
+    --wfc-precipitation-bar-color: var(
+      --weather-forecast-card-precipitation-bar-color,
+      color-mix(in srgb, var(--blue-color, #2196f3) 40%, transparent)
+    );
+  }
 }
 
 ha-card {
@@ -233,7 +274,7 @@ ha-card {
   pointer-events: auto;
 }
 
-.wfc-forecast-container.is-scrollable {
+.wfc-mask-container.is-scrollable {
   --mask: linear-gradient(
     to right,
     rgba(0, 0, 0, 0) 0,
@@ -243,6 +284,10 @@ ha-card {
   );
   -webkit-mask: var(--mask);
   mask: var(--mask);
+}
+
+.wfc-mask-container {
+  width: 100%;
 }
 
 .wfc-scroll-container {
@@ -258,7 +303,7 @@ ha-card {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -349,6 +394,34 @@ ha-card {
   align-items: center;
   justify-content: center;
   text-align: center;
+}
+
+.wfc-forecast-slot-time.wfc-two-rows {
+  flex-direction: column;
+  height: auto;
+  gap: 2px;
+}
+
+.wfc-forecast-slot-time-primary {
+  color: var(--primary-text-color, #212121);
+  font-size: var(--ha-font-size-m, 14px);
+  height: 20px;
+  line-height: 20px;
+}
+
+.wfc-forecast-slot-time-secondary {
+  color: var(--secondary-text-color, #9b9b9b);
+  font-size: var(--ha-font-size-s, 12px);
+  line-height: var(--ha-line-height-condensed, 1.2);
+}
+
+.wfc-forecast-slot-time.wfc-sunrise .wfc-forecast-slot-time-primary,
+.wfc-forecast-slot-time.wfc-sunset .wfc-forecast-slot-time-primary {
+  color: inherit;
+}
+
+.wfc-forecast-slot-time-primary ha-icon {
+  --mdc-icon-size: 18px;
 }
 
 .wfc-forecast-slot-temperature {
@@ -517,8 +590,6 @@ ha-card {
   min-width: var(--wfc-forecast-chart-width, auto);
 }
 
-
-
 .wfc-forecast-condition-span {
   position: relative;
   display: flex;
@@ -543,6 +614,33 @@ ha-card {
   z-index: 1;
 }
 
+.wfc-forecast-chart-settings {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
+}
+
+.wfc-forecast-chart-settings.has-selector {
+  margin-bottom: var(--wfc-component-gap);
+}
+
+.wfc-forecast-chart-settings span {
+  font-size: var(--ha-font-size-xl, 16px);
+  line-height: var(--ha-line-height-condensed, 1.2);
+  color: var(--primary-text-color, #212121);
+  user-select: none;
+  -webkit-user-select: none;
+  padding-left: var(--ha-space-2, 8px);
+}
+.wfc-forecast-chart-attribute-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 wfc-wind-indicator,
 wfc-current-weather,
 wfc-current-weather-attributes,
@@ -551,9 +649,20 @@ wfc-weather-condition-icon-provider {
   display: contents;
 }
 
+/* Fallback for browsers without container query support */
+@supports not (container-type: inline-size) {
+  @media (max-width: 375px) {
+    .wfc-current-state,
+    .wfc-current-temperature {
+      font-size: var(--ha-font-size-xl, 20px);
+    }
+  }
+}
+
+/* Modern browsers with container query support */
 @container wfc-container (max-width: 375px) {
   .wfc-current-state,
   .wfc-current-temperature {
-    font-size: var(--ha-font-size-xl);
+    font-size: var(--ha-font-size-xl, 20px);
   }
 }

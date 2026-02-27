@@ -44,6 +44,24 @@ export const WEATHER_EFFECTS = [
 export type CurrentWeatherAttributes =
   (typeof CURRENT_WEATHER_ATTRIBUTES)[number];
 
+export const CHART_ATTRIBUTES = [
+  "temperature_and_precipitation",
+  "apparent_temperature",
+  "humidity",
+  "pressure",
+  "uv_index",
+] as const;
+
+export type ChartAttributes = (typeof CHART_ATTRIBUTES)[number];
+
+export const DEFAULT_CHART_ATTRIBUTE: ChartAttributes =
+  "temperature_and_precipitation";
+
+export interface CurrentWeatherAttributeConfig {
+  name: CurrentWeatherAttributes;
+  entity?: string;
+}
+
 export type WeatherEffect = (typeof WEATHER_EFFECTS)[number];
 
 export enum ForecastMode {
@@ -62,6 +80,10 @@ export type ConditionColorValue = string | {
 
 export type ConditionColorMap = Partial<Record<string, ConditionColorValue>>;
 
+export interface ForecastSelectAttributeActionConfig extends BaseActionConfig {
+  action: "select-forecast-attribute";
+}
+
 export interface WeatherForecastCardForecastConfig {
   extra_attribute?: string;
   mode?: ForecastMode;
@@ -75,15 +97,20 @@ export interface WeatherForecastCardForecastConfig {
   group_condition_icons?: boolean;
   condition_colors?: boolean;
   condition_color_map?: ConditionColorMap;
+  show_attribute_selector?: boolean;
+  default_chart_attribute?: ChartAttributes;
 }
 
 export interface WeatherForecastCardCurrentConfig {
   show_attributes?:
     | boolean
     | CurrentWeatherAttributes
-    | CurrentWeatherAttributes[];
+    | CurrentWeatherAttributes[]
+    | CurrentWeatherAttributeConfig
+    | (CurrentWeatherAttributes | CurrentWeatherAttributeConfig)[];
   temperature_precision?: number;
   secondary_info_attribute?: CurrentWeatherAttributes;
+  temperature_entity?: string;
 }
 
 export interface WeatherForecastCardForecastActionConfig {
@@ -96,6 +123,7 @@ export interface WeatherForecastCardConfig {
   type: "custom:weather-forecast-card";
   entity: string;
   name?: string;
+  /** @deprecated Use `current.temperature_entity` instead */
   temperature_entity?: string;
   show_current?: boolean;
   show_forecast?: boolean;
@@ -110,7 +138,10 @@ export interface WeatherForecastCardConfig {
   double_tap_action?: ActionConfig | undefined;
 }
 
-export type ForecastActionConfig = ForecastToggleActionConfig | ActionConfig;
+export type ForecastActionConfig =
+  | ForecastToggleActionConfig
+  | ForecastSelectAttributeActionConfig
+  | ActionConfig;
 
 export type ExtendedHomeAssistant = HomeAssistant & {
   formatEntityState: (stateObj: HassEntity) => string | undefined;

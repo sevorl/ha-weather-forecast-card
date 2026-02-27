@@ -42,6 +42,8 @@ export interface ForecastAttribute {
   pressure?: number;
   wind_speed?: number;
   wind_bearing?: number | string;
+  uv_index?: number;
+  apparent_temperature?: number;
 }
 
 export interface WeatherEntityAttributes extends HassEntityAttributeBase {
@@ -360,8 +362,52 @@ export const supportsRequiredForecastFeatures = (
 
   const hasDaily = (features & WeatherEntityFeature.FORECAST_DAILY) !== 0;
   const hasHourly = (features & WeatherEntityFeature.FORECAST_HOURLY) !== 0;
+  const hasTwiceDaily =
+    (features & WeatherEntityFeature.FORECAST_TWICE_DAILY) !== 0;
 
-  return hasDaily && hasHourly;
+  return hasDaily || hasHourly || hasTwiceDaily;
+};
+
+export const supportsForecastType = (
+  weatherEntity: HassEntityBase | undefined,
+  forecastType: "hourly" | "daily" | "twice_daily"
+): boolean => {
+  if (!weatherEntity || !weatherEntity.attributes) {
+    return false;
+  }
+
+  const features = weatherEntity.attributes.supported_features;
+  if (typeof features !== "number") {
+    return false;
+  }
+
+  const featureFlagMap: Record<
+    "hourly" | "daily" | "twice_daily",
+    WeatherEntityFeature
+  > = {
+    hourly: WeatherEntityFeature.FORECAST_HOURLY,
+    daily: WeatherEntityFeature.FORECAST_DAILY,
+    twice_daily: WeatherEntityFeature.FORECAST_TWICE_DAILY,
+  };
+
+  const featureFlag = featureFlagMap[forecastType];
+
+  return (features & featureFlag) !== 0;
+};
+
+/**
+ * @returns the forecast type supported by the entity, preferring "daily" over "twice_daily" if both are supported
+ */
+export const getDailyForecastType = (
+  weatherEntity: HassEntityBase | undefined
+): "daily" | "twice_daily" | undefined => {
+  if (supportsForecastType(weatherEntity, "daily")) {
+    return "daily";
+  }
+  if (supportsForecastType(weatherEntity, "twice_daily")) {
+    return "twice_daily";
+  }
+  return undefined;
 };
 
 export const formatPrecipitation = (value: number, unit: string): string => {
@@ -489,6 +535,12 @@ export const aggregateHourlyForecastData = (
     const validPrecipChance = group
       .map((e) => e.precipitation_probability)
       .filter((e): e is number => e !== undefined);
+    const validUvIndex = group
+      .map((e) => e.uv_index)
+      .filter((e): e is number => e !== undefined);
+    const validApparentTemp = group
+      .map((e) => e.apparent_temperature)
+      .filter((e): e is number => e !== undefined);
 
     const lastEntry = group[group.length - 1]!;
     const lastEntryDate = lastEntry.groupEndtime
@@ -543,6 +595,16 @@ export const aggregateHourlyForecastData = (
       aggregatedEntry.wind_bearing = computeAverageBearing(validBearing);
     }
 
+    if (validUvIndex.length > 0) {
+      aggregatedEntry.uv_index = Math.max(...validUvIndex);
+    }
+
+    if (validApparentTemp.length > 0) {
+      aggregatedEntry.apparent_temperature = parseFloat(
+        average(validApparentTemp).toFixed(1)
+      );
+    }
+
     groupedForecast.push(aggregatedEntry);
   }
 
@@ -593,6 +655,40 @@ export const formatWeatherEntityAttributeValue = (
   return hass.formatEntityAttributeValue(weatherEntity, attribute);
 };
 
+export const formatCustomEntityAttributeValue = (
+  hass: ExtendedHomeAssistant,
+  weatherEntity: WeatherEntity,
+  config: WeatherForecastCardConfig,
+  attribute: CurrentWeatherAttributes,
+  customEntityId: string
+): string | undefined => {
+  const customEntity = hass.states[customEntityId];
+
+  if (!customEntity) {
+    return undefined;
+  }
+
+  const value = customEntity.state;
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  // Temperature related attributes need special handling for precision
+  if (attribute === "apparent_temperature" || attribute === "dew_point") {
+    return formatTemperature(
+      hass,
+      weatherEntity,
+      value,
+      config.current?.temperature_precision
+    );
+  }
+
+  const formattedValue = hass.formatEntityState(customEntity);
+
+  return formattedValue;
+};
+
 export const formatTemperature = (
   hass: ExtendedHomeAssistant,
   weatherEntity: WeatherEntity,
@@ -610,7 +706,17 @@ export const formatTemperature = (
 
   const unit = getWeatherUnit(hass, weatherEntity, "temperature");
 
-  const formattedValue = formatNumber(value, hass.locale, options);
+  // Convert string values to numbers to ensure formatNumber works correctly
+  // with precision options. Sensor states are returned as strings, and
+  // Intl.NumberFormat doesn't apply precision options to strings properly.
+  const numericValue = typeof value === "string" ? parseFloat(value) : value;
+
+  // If the value couldn't be parsed, return the original value with unit
+  if (isNaN(numericValue)) {
+    return `${value}${excludeUnit ? "" : unit}`;
+  }
+
+  const formattedValue = formatNumber(numericValue, hass.locale, options);
 
   return `${formattedValue}${excludeUnit ? "" : unit}`;
 };
