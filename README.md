@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/troinine/ha-weather-forecast-card/refs/heads/main/docs/weather-forecast-card-demo.gif" alt="Weather Forecast Card" width="600" style="border-radius: 12px;">
+  <img src="docs/Grouped%20Icons.png" alt="Weather Forecast Card – Grouped Condition Icons" width="800" style="border-radius: 12px;">
   <br>
   <a href=https://www.home-assistant.io/><img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-Start-blue?logo=homeassistant&logoColor=fff&style=for-the-badge&labelColor=000"></a>
   <a href="https://github.com/sevorl/ha-weather-forecast-card/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/sevorl/ha-weather-forecast-card?style=for-the-badge&labelColor=000&logoColor=fff&color=blue"></a>
