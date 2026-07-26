@@ -29,6 +29,7 @@ import {
   WEATHER_ATTRIBUTE_ICON_MAP,
   WeatherEntity,
 } from "../data/weather";
+import { getUvIndexColor } from "../data/uv-index";
 import {
   LineController,
   LineElement,
@@ -85,6 +86,12 @@ const DEFAULT_CHART_FONT_SIZE = 12;
 
 // Default padding for top and bottom of the chart, used as a baseline for scaling based on font size.
 const DEFAULT_CHART_PADDING = 10;
+
+// Extra pixels (on top of the font size) a temperature data label occupies above the line:
+// the datalabels box padding plus its offset from the anchor point. The top chart padding
+// reserves `fontSize + this` so the peak label is never clipped at the canvas edge, regardless
+// of the temperature spread.
+const CHART_LABEL_VERTICAL_PADDING = 10;
 
 // Default chart height in pixels at the baseline font size, used as a reference for scaling the chart height dynamically.
 const DEFAULT_CHART_HEIGHT = 130;
@@ -204,7 +211,7 @@ export class WfcForecastChart extends LitElement {
               <div class="wfc-forecast-chart-attribute-selector">
                 <ha-button
                   class="wfc-settings-toggle-button"
-                  size="small"
+                  size="s"
                   appearance="filled"
                   variant="brand"
                   @click=${this._onSettingsToggle}
@@ -358,7 +365,12 @@ export class WfcForecastChart extends LitElement {
     const gridColor = style.getPropertyValue("--wfc-chart-grid-color");
     const fontSize = this._getChartFontSize();
 
-    // Adjust bottom padding based on font size (base: 10 at default font size)
+    // The top must hold the high temperature label (which hangs above the line) in pixels,
+    // since the scale only reserves a small degree buffer there — otherwise the peak label
+    // clips at the canvas edge (issue #139). The bottom only needs to scale its baseline
+    // padding with the font; its generous scale buffer already keeps the low label/precip
+    // bars clear of the edge.
+    const topPadding = fontSize + CHART_LABEL_VERTICAL_PADDING;
     const bottomPadding =
       DEFAULT_CHART_PADDING + (fontSize - DEFAULT_CHART_FONT_SIZE);
 
@@ -375,7 +387,7 @@ export class WfcForecastChart extends LitElement {
       layout: {
         autoPadding: false,
         padding: {
-          top: DEFAULT_CHART_PADDING,
+          top: topPadding,
           bottom: bottomPadding,
           left: 0,
           right: 0,
@@ -546,27 +558,7 @@ export class WfcForecastChart extends LitElement {
     style: CSSStyleDeclaration,
     options: ChartOptions
   ): ChartConfiguration {
-    const defaultColor = style
-      .getPropertyValue("--wfc-chart-uv-bar-color")
-      .trim();
     const labelColor = style.getPropertyValue("--wfc-chart-label-color");
-
-    const uvColors = {
-      low: style.getPropertyValue("--wfc-uv-low").trim(),
-      moderate: style.getPropertyValue("--wfc-uv-moderate").trim(),
-      high: style.getPropertyValue("--wfc-uv-high").trim(),
-      veryHigh: style.getPropertyValue("--wfc-uv-very-high").trim(),
-      extreme: style.getPropertyValue("--wfc-uv-extreme").trim(),
-    };
-
-    const getUvColor = (value: number | null) => {
-      if (value === null) return defaultColor;
-      if (value >= 11) return uvColors.extreme;
-      if (value >= 8) return uvColors.veryHigh;
-      if (value >= 6) return uvColors.high;
-      if (value >= 3) return uvColors.moderate;
-      return uvColors.low;
-    };
 
     return {
       type: "bar",
@@ -578,7 +570,9 @@ export class WfcForecastChart extends LitElement {
             data: data.map((f) =>
               f.uv_index != null ? Math.round(f.uv_index) : 0
             ),
-            backgroundColor: data.map((f) => getUvColor(f.uv_index ?? null)),
+            backgroundColor: data.map((f) =>
+              style.getPropertyValue(getUvIndexColor(f.uv_index ?? null)).trim()
+            ),
             borderWidth: 0,
             borderRadius: {
               topLeft: 5,
@@ -803,16 +797,18 @@ export class WfcForecastChart extends LitElement {
   /**
    * Computes the Y-axis boundaries (min and max) for the temperature scale.
    *
-   * This algorithm calculates "artificial" padding to prevent data labels from being pushed
-   * outside the chart area. It specifically addresses the issue where low-temperature labels
-   * (which hang below the data point) get clipped by the x-axis.
+   * This gives the line some breathing room from the chart edges so it does not run flush
+   * against the top/bottom. It is intentionally modest: the room needed for the data *labels*
+   * (which hang above/below the line) is reserved separately, in pixels, via the chart's layout
+   * padding (see `getChartConfig`) — a label needs a fixed pixel height, not an amount that
+   * scales with the temperature spread.
    *
    * The algorithm follows these steps:
    *
    *   1. Identify the absolute min and max from the forecast.
    *   2. Enforce a minimum range of 10° to prevent the chart from looking "flat" or jittery on stable days.
-   *   3. Apply dynamic padding based on the spread, heavily favoring the bottom (35% when low temps are available, otherwise 10%) over the top (20%) to accommodate labels hanging below the line.
-   *   4. Enforces a hard minimum buffer (5° at the bottom) to guarantee sufficient "degree distance" for labels, regardless of how condensed the chart scale is.
+   *   3. Apply dynamic padding based on the spread, favoring the bottom (35% when low temps are available, otherwise 10%) over the top (20%) to accommodate the low line and precipitation bars below.
+   *   4. Enforce a hard minimum buffer (5° at the bottom when a low line is drawn) so the scale never collapses on condensed data.
    *   5. Round values to the nearest integer for cleaner grid lines.
    *
    * @param forecast - The forecast data to compute the scale limits for.

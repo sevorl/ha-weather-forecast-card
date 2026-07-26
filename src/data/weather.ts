@@ -326,11 +326,15 @@ export const subscribeForecast = (
   forecast_type: ModernForecastType,
   callback: (forecastevent: ForecastEvent) => void
 ) =>
-  hass.connection.subscribeMessage<ForecastEvent>(callback, {
-    type: "weather/subscribe_forecast",
-    forecast_type,
-    entity_id,
-  });
+  hass.connection.subscribeMessage<ForecastEvent>(
+    callback,
+    {
+      type: "weather/subscribe_forecast",
+      forecast_type,
+      entity_id,
+    },
+    { resubscribe: false }
+  );
 
 export const getMaxPrecipitation = (forecasts: ForecastAttribute[]): number => {
   const maxPrecipitation = Math.max(
@@ -611,13 +615,33 @@ export const aggregateHourlyForecastData = (
   return groupedForecast;
 };
 
+export const DEFAULT_ATTRIBUTE_ICON = "mdi:gauge";
+
+export const resolveAttributeIcon = (
+  name: string | undefined,
+  explicitIcon?: string,
+  customEntity?: { attributes?: { icon?: string } }
+): string => {
+  if (explicitIcon) {
+    return explicitIcon;
+  }
+  if (customEntity?.attributes?.icon) {
+    return customEntity.attributes.icon;
+  }
+  const mapped = name
+    ? (WEATHER_ATTRIBUTE_ICON_MAP as Record<string, string>)[name]
+    : undefined;
+  return mapped ?? DEFAULT_ATTRIBUTE_ICON;
+};
+
 export const formatWeatherEntityAttributeValue = (
   hass: ExtendedHomeAssistant,
   weatherEntity: WeatherEntity,
   config: WeatherForecastCardConfig,
-  attribute: CurrentWeatherAttributes
+  attribute: CurrentWeatherAttributes | string
 ): string | undefined => {
-  const value = weatherEntity.attributes[attribute];
+  const value =
+    weatherEntity.attributes[attribute as keyof typeof weatherEntity.attributes];
 
   if (value === undefined) {
     return undefined;
@@ -630,7 +654,7 @@ export const formatWeatherEntityAttributeValue = (
   // hass.formatEntityAttributeValue does not support wind_gust_speed yet
   if (attribute === "wind_gust_speed") {
     const unit = getWeatherUnit(hass, weatherEntity, "wind_gust_speed");
-    const windGustSpeed = formatNumber(value, hass.locale);
+    const windGustSpeed = formatNumber(value as number, hass.locale);
 
     return `${windGustSpeed} ${unit}`;
   }
@@ -647,7 +671,7 @@ export const formatWeatherEntityAttributeValue = (
     return formatTemperature(
       hass,
       weatherEntity,
-      value,
+      value as number | string,
       config.current?.temperature_precision
     );
   }
@@ -659,7 +683,7 @@ export const formatCustomEntityAttributeValue = (
   hass: ExtendedHomeAssistant,
   weatherEntity: WeatherEntity,
   config: WeatherForecastCardConfig,
-  attribute: CurrentWeatherAttributes,
+  attribute: CurrentWeatherAttributes | string | undefined,
   customEntityId: string
 ): string | undefined => {
   const customEntity = hass.states[customEntityId];

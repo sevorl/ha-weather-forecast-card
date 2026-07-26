@@ -87,8 +87,10 @@ resources:
 | `show_current`           | `boolean`         | `true`       | Show current weather conditions.                                                                                                                                                  |
 | `show_forecast`          | `boolean`         | `true`       | Show forecast section.                                                                                                                                                            |
 | `default_forecast`       | `string`          | `daily`      | Default forecast to view (`daily` or `hourly`).                                                                                                                                   |
+| `forecast_types`         | `string`          | `both`       | Which forecast types to subscribe to: `both`, `daily`, or `hourly`. Loading only the forecast you display reduces websocket load, which can prevent slowdowns on low-power devices (e.g. wall tablets). |
 | `icons_path`             | `string`          | optional     | Path to custom icons. For example, `/local/img/my-custom-weather-icons`. See [Custom Weather Icons](#custom-weather-icons) for more details.                                      |
 | `show_condition_effects` | `boolean`/`array` | optional     | Enable animated weather condition effects. Set to `true` for all conditions or provide an array of specific effects. See [Weather Condition Effects](#weather-condition-effects). |
+| `show_moon_phase`        | `boolean`         | `true`       | When the `moon` effect is shown, shades the moon to match the current lunar phase based on your Home Assistant location. Set to `false` to always show a full moon.               |
 | `current`                | `object`          | optional     | Current weather configuration options. See [Current Object](#current-object).                                                                                                     |
 | `forecast`               | `object`          | optional     | Forecast configuration options. See [Forecast Object](#forecast-object).                                                                                                          |
 | `forecast_action`        | `object`          | optional     | Actions for the forecast area. See [Forecast Actions](#forecast-actions).                                                                                                         |
@@ -103,9 +105,10 @@ The `current` object controls the display of current weather information and att
 | Name                       | Type                       | Default  | Description                                                                                                                                                                                                                                                                                                                                                |
 | :------------------------- | :------------------------- | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `temperature_entity`       | `string`                   | optional | Bring your own temperature entity to override the temperature from the main weather `entity`. **Note:** The root level `temperature_entity` is deprecated but still supported and will be migrated automatically when editing the card using the card editor.                                                                                              |
-| `show_attributes`          | `boolean`/`string`/`array` | optional | Display weather attributes below current conditions. Set to `true` to show all available attributes, `false` to hide all, a single attribute name (e.g., `"humidity"`), or an array of attribute names or objects. See [Custom Attribute Entities](#custom-attribute-entities) for advanced configuration.                                                 |
-| `secondary_info_attribute` | `string`                   | optional | Controls which secondary info is displayed below current temperature. Supports all available weather attributes. If not set, or if the given attribute is not available in the weather entity, it will default to temperature extrema (high/low) if available, if not available then `precipitation` and if precipitation isn't available then `humidity`. |
+| `show_attributes`          | `boolean`/`string`/`array` | optional | Display weather attributes below current conditions. Set to `true` to show all available attributes, `false` to hide all, a single attribute name (e.g., `"humidity"`), or an array of attribute names or objects. Objects can override the value `entity`, `label` and `icon`, or display an arbitrary entity. See [Custom Attributes](#custom-attributes) for advanced configuration.                                                 |
+| `secondary_info_attribute` | `string`/`object`          | optional | Controls which secondary info is displayed below current temperature. Supports all available weather attributes. Can also be an object `{ name?, entity?, icon? }` to source the value from a custom entity (see [Custom Attributes](#custom-attributes); note that `label` is not rendered for secondary info). If not set, or if the given attribute is not available in the weather entity, it will default to temperature extrema (high/low) if available, if not available then `precipitation` and if precipitation isn't available then `humidity`. |
 | `temperature_precision`    | `number`                   | optional | Number of decimal places to display for temperature values (0-2). Applies to current temperature, high/low temperatures, and temperature-related attributes like dew point and apparent temperature.                                                                                                                                                       |
+| `attributes_layout`        | `string`                   | `default` | Layout of the attributes list. `default` is a full-width vertical list (icon + label + value, one per line). `compact` is a fixed two-column grid of icon + value chips: labels are dropped (kept as a hover tooltip), and the right column is mirrored so icons sit against both card edges.                                                              |
 
 **Available attributes:**
 
@@ -123,16 +126,21 @@ The `current` object controls the display of current weather information and att
 > [!NOTE]
 > Attributes are only rendered if the data is available from your weather entity (or custom sensor entity if configured). If an attribute is not provided by your weather integration, it will not be displayed even if configured.
 
-#### Custom Attribute Entities
+#### Custom Attributes
 
-Similar to the `current.temperature_entity` option, you can override individual attribute values with custom sensor entities. This is useful when your weather integration doesn't provide certain attributes or when you have more accurate local sensors.
+Similar to the `current.temperature_entity` option, each displayed attribute can be customized. You can override an attribute's value with a custom sensor entity (useful when your weather integration doesn't provide it, or when you have a more accurate local sensor), give it a custom `label` or `icon`, or display an arbitrary entity that isn't a standard weather attribute.
 
 **Object format for attributes:**
 
-| Property | Type     | Description                                                            |
-| :------- | :------- | :--------------------------------------------------------------------- |
-| `name`   | `string` | The attribute name (e.g., `humidity`, `pressure`)                      |
-| `entity` | `string` | Optional sensor entity ID to use instead of the weather entity's value |
+| Property | Type     | Description                                                                                                                          |
+| :------- | :------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `name`   | `string` | Optional. A known weather attribute (e.g., `humidity`, `pressure`). Omit it for an entity-only item that displays a custom entity's state. |
+| `entity` | `string` | Optional. Entity ID to source the value from instead of the weather entity. **Required when `name` is omitted.**                    |
+| `label`  | `string` | Optional. Custom label shown instead of the derived attribute name or the entity's friendly name.                                   |
+| `icon`   | `string` | Optional. Custom icon (e.g., `mdi:weather-windy`) shown instead of the default attribute or entity icon.                            |
+
+> [!NOTE]
+> Each item must have a `name`, an `entity`, or both. An entity-only item (no `name`) is displayed as an "arbitrary" attribute: its value is the entity's state and its label defaults to the entity's friendly name unless you set `label`.
 
 **Configuration examples:**
 
@@ -166,8 +174,39 @@ current:
     - wind_speed # Uses weather entity
 ```
 
+```yaml
+# Custom label and icon
+current:
+  show_attributes:
+    - name: wind_speed
+      label: Wind
+      icon: mdi:weather-windy
+```
+
+```yaml
+# Arbitrary entities (no weather attribute name), shows the entity state
+current:
+  show_attributes:
+    - entity: sensor.pollen_count
+      label: Pollen
+      icon: mdi:flower
+    - entity: sensor.uv_today # label defaults to the entity's friendly name
+    - humidity # Standard weather attribute alongside custom ones
+```
+
+```yaml
+# Compact two-column layout (icon + value chips, no labels)
+current:
+  attributes_layout: compact
+  show_attributes:
+    - humidity
+    - pressure
+    - wind_speed
+    - visibility
+```
+
 > [!TIP]
-> The card editor provides entity selectors with appropriate device class filtering when you select attributes. Expand the "Attribute entities" section to configure custom sensors for each selected attribute.
+> The card editor supports this too. When you select standard attributes, the "Attribute entities" section provides an entity selector (with device class filtering) plus optional label and icon fields for each. Arbitrary entity attributes can be added and removed under the "Custom entity attributes" section.
 
 ### Forecast Object
 
@@ -175,7 +214,7 @@ current:
 
 | Name                                   | Type    | Default                         | Description                                                                                                                                                                                                                                                                           |
 | :------------------------------------- | :------ | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `extra_attribute`                      | string  | optional                        | The extra attribute to show below the weather forecast. Currently supports, `precipitation_probability`, `wind_direction` and `wind_bearing`                                                                                                                                          |
+| `extra_attribute`                      | string  | optional                        | The extra attribute to show below the weather forecast. Currently supports `precipitation_probability`, `wind_direction`, `wind_bearing` and `uv_index`.                                                                                                                              |
 | `hourly_group_size`                    | number  | `1`                             | Number of hours to group together in hourly forecast. Group data will be aggregated per forecast attribute.                                                                                                                                                                           |
 | `hourly_slots`                         | number  | optional                        | Limit the number of hourly forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                             |
 | `daily_slots`                          | number  | optional                        | Limit the number of daily forecast entries to show. Defaults to unlimited. Value must be greater than 0.                                                                                                                                                                              |
@@ -348,16 +387,17 @@ show_condition_effects: false
 
 ### Available Effects
 
-The card provides six different effect types that can be individually enabled or disabled:
+The card provides seven different effect types that can be individually enabled or disabled:
 
-| Effect Type     | Description                                                                                                                                                                               | Weather Conditions Applied              |
-| :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------- |
-| **`rain`**      | Animated raindrops falling with realistic wind drift. Droplet angle and speed adapt to wind conditions from weather data. Includes splash effects on landing.                             | `rainy`, `pouring`, `lightning-rainy`   |
-| **`snow`**      | Snowflakes falling with smooth sinusoidal drift patterns. Each flake follows a unique non-linear trajectory with varying sizes, opacity, and depths for realistic parallax effects.       | `snowy`, `snowy-rainy`                  |
-| **`lightning`** | Dramatic lightning flash sequences with multiple strikes and residual flickers, creating an authentic storm atmosphere.                                                                   | `lightning`, `lightning-rainy`          |
-| **`sky`**       | Visually pleasing gradient sky background that adapts to time of day if sun times are enabled.                                                                                            | `sunny`, `clear-night`                  |
-| **`sun`**       | Animated sun with rotating rays positioned at the top of the card. Creates a warm, dynamic daytime atmosphere. Automatically switches to moon effect after sunset if sun times are shown. | `sunny`                                 |
-| **`moon`**      | Crescent moon with animated twinkling stars scattered across the card. Stars have randomized positions, sizes, and twinkle animations for a serene nighttime atmosphere.                  | `clear-night`, `sunny` (with sun times) |
+| Effect Type     | Description                                                                                                                                                                               | Weather Conditions Applied                          |
+| :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------- |
+| **`rain`**      | Animated raindrops falling with realistic wind drift. Droplet angle and speed adapt to wind conditions from weather data. Includes splash effects on landing.                             | `rainy`, `pouring`, `lightning-rainy`               |
+| **`snow`**      | Snowflakes falling with smooth sinusoidal drift patterns. Each flake follows a unique non-linear trajectory with varying sizes, opacity, and depths for realistic parallax effects.       | `snowy`, `snowy-rainy`                              |
+| **`lightning`** | Dramatic lightning flash sequences with multiple strikes and residual flickers, creating an authentic storm atmosphere.                                                                   | `lightning`, `lightning-rainy`                      |
+| **`sky`**       | Visually pleasing gradient sky background that adapts to time of day if sun times are enabled. Renders a soft overcast deck for `cloudy`.                                                  | `sunny`, `clear-night`, `cloudy`, `partlycloudy`    |
+| **`sun`**       | Animated sun with rotating rays positioned at the top of the card. Creates a warm, dynamic daytime atmosphere. Automatically switches to moon effect after sunset if sun times are shown. | `sunny`, `partlycloudy`                             |
+| **`moon`**      | Photorealistic moon using a NASA lunar surface image, glowing above animated twinkling stars scattered across the card. By default it is shaded to match the current lunar phase for your location, with the glow following the sunlit limb (disable phase shading with `show_moon_phase: false`). Stars have randomized positions, sizes, and twinkle animations for a serene nighttime atmosphere.                  | `clear-night`, `partlycloudy`/`sunny` (with sun times) |
+| **`cloud`**     | Soft, realistic clouds drifting across the sky, their speed influenced by wind. `cloudy` shows a fuller grey deck over an overcast sky; `partlycloudy` shows a few lighter clouds alongside the sun or moon. Clouds are dimmed at night. | `cloudy`, `partlycloudy`                            |
 
 ## Custom Icons
 
@@ -461,8 +501,11 @@ Customize the appearance of animated weather effects when `show_condition_effect
 | `weather-forecast-card-effects-sun-spin-duration`      | `100s`                                                             | Duration of the sun ray rotation animation             |
 | `weather-forecast-card-effects-sun-color`              | Light: `#facc15` / Dark: `#fbbf24`                                 | Color of the sun                                       |
 | `weather-forecast-card-effects-sun-ray-color`          | Light: `rgba(253, 224, 71, 0.4)` / Dark: `rgba(251, 191, 36, 0.5)` | Color of the sun rays                                  |
-| `weather-forecast-card-effects-moon-size`              | `80px`                                                             | Size of the moon                                       |
-| `weather-forecast-card-effects-moon-color`             | `rgba(220, 220, 230, 1)`                                           | Color of the moon                                      |
+| `weather-forecast-card-effects-moon-size`              | `100px`                                                            | Size of the moon                                       |
+| `weather-forecast-card-effects-moon-image`             | NASA lunar surface image (embedded)                               | Moon surface image. Override with a `url(...)`, e.g. `url(/local/my-moon.png)` |
+| `weather-forecast-card-effects-moon-color`             | `rgba(220, 220, 230, 1)`                                           | Fallback color behind the moon image                   |
+| `weather-forecast-card-effects-moon-shadow-color`      | `rgba(28, 32, 54, 0.6)` (light) / `rgba(8, 10, 24, 0.72)` (dark)   | Color of the moon's unlit phase shadow                 |
+| `weather-forecast-card-effects-moon-glow-color`        | `rgba(214, 224, 255, 0.5)` (light) / `rgba(214, 224, 255, 0.55)` (dark) | Color of the moon's glow (halo follows the lit limb)   |
 | `weather-forecast-card-effects-star-color`             | `#ffffff`                                                          | Color of the stars in night sky                        |
 | `weather-forecast-card-effects-snow-color`             | Light: `#cbd5e1` / Dark: `#ffffff`                                 | Color of snowflakes                                    |
 | `weather-forecast-card-effects-rain-color`             | Light: `#2563eb` / Dark: `#6cb4ee`                                 | Color of rain drops                                    |
@@ -474,6 +517,15 @@ Customize the appearance of animated weather effects when `show_condition_effect
 | `weather-forecast-card-effects-clear-night-sky-color`  | Light: `rgba(49, 46, 129, 0.7)` / Dark: `rgba(10, 15, 40, 0.85)`   | Night clear sky gradient primary color                 |
 | `weather-forecast-card-effects-clear-night-sky-accent` | Light: `rgba(88, 28, 135, 0.55)` / Dark: `rgba(20, 30, 80, 0.6)`   | Night clear sky gradient accent color                  |
 | `weather-forecast-card-effects-clear-night-horizon`    | Light: `rgba(236, 72, 153, 0.4)` / Dark: `rgba(40, 25, 100, 0.4)`  | Night clear sky gradient horizon color                 |
+| `weather-forecast-card-effects-overcast-sky-color`     | Light: `rgba(118, 132, 148, 0.42)` / Dark: `rgba(60, 70, 82, 0.55)` | Day overcast (`cloudy`) sky gradient primary color    |
+| `weather-forecast-card-effects-overcast-sky-accent`    | Light: `rgba(152, 165, 180, 0.34)` / Dark: `rgba(78, 89, 102, 0.45)` | Day overcast sky gradient accent color               |
+| `weather-forecast-card-effects-overcast-sky-horizon`   | Light: `rgba(196, 206, 216, 0.24)` / Dark: `rgba(102, 113, 126, 0.3)` | Day overcast sky gradient horizon color             |
+| `weather-forecast-card-effects-overcast-night-color`   | Light: `rgba(38, 44, 56, 0.8)` / Dark: `rgba(16, 20, 28, 0.88)`    | Night overcast sky gradient primary color              |
+| `weather-forecast-card-effects-overcast-night-accent`  | Light: `rgba(55, 62, 76, 0.65)` / Dark: `rgba(30, 36, 47, 0.7)`    | Night overcast sky gradient accent color               |
+| `weather-forecast-card-effects-overcast-night-horizon` | Light: `rgba(78, 86, 100, 0.45)` / Dark: `rgba(48, 55, 68, 0.5)`   | Night overcast sky gradient horizon color              |
+| `weather-forecast-card-effects-cloud-color`            | Light: `#f4f7fb` / Dark: `#dfe6ee`                                 | Base color of the drifting clouds                      |
+| `weather-forecast-card-effects-text-shadow`            | `0 1px 2px rgba(0, 0, 0, 0.5), 0 0 4px rgba(0, 0, 0, 0.35)`        | Legibility shadow on the current state and temperature so they stay readable over the drifting clouds (`cloudy` / `partlycloudy`). Applied in dark theme only, where light text sits over light clouds; in light theme the dark text already has enough contrast so no shadow is drawn. Set to `none` to disable |
+| `weather-forecast-card-effects-text-shadow-secondary`  | `0 1px 2px rgba(0, 0, 0, 0.55)`                                    | Legibility shadow on the smaller secondary text (entity name and secondary info). A tighter shadow than the primary one to keep small text crisp. Applied in dark theme only. Set to `none` to disable |
 
 > [!NOTE]
 > Weather effects variables support both light and dark themes. Colors automatically adjust based on your theme's dark mode setting, with separate default values optimized for each mode.

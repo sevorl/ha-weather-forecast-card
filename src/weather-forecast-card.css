@@ -96,7 +96,9 @@
     --weather-forecast-card-min-item-width-chart,
     55px
   );
-  --forecast-item-width: var(--wfc-min-item-width-simple); /* Initial minimum value. Updated in JS */
+  --forecast-item-width: var(
+    --wfc-min-item-width-simple
+  ); /* Initial minimum value. Updated in JS */
   --forecast-item-gap: 0px; /* Initial minimum value. Updated in JS */
   --forecast-precipitation-bar-max-height: calc(
     var(--ha-font-size-s, 12px) + 2px
@@ -111,6 +113,15 @@
     64px
   );
   --indicator-width: 20px;
+  --wfc-effects-text-shadow: var(
+    --weather-forecast-card-effects-text-shadow,
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 4px rgba(0, 0, 0, 0.35)
+  );
+  --wfc-effects-text-shadow-secondary: var(
+    --weather-forecast-card-effects-text-shadow-secondary,
+    0 1px 2px rgba(0, 0, 0, 0.55)
+  );
 }
 
 /* Modern browsers with color-mix support */
@@ -130,8 +141,11 @@
 ha-card {
   position: relative;
   box-sizing: border-box;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
+  height: 100%;
   min-width: 0;
   padding: var(--card-padding, 16px);
 }
@@ -233,6 +247,20 @@ ha-card {
   white-space: nowrap;
 }
 
+wfc-animation-provider.dark[has-clouds] ~ .wfc-container .wfc-current-state,
+wfc-animation-provider.dark[has-clouds] ~ .wfc-container .wfc-current-temperature {
+  text-shadow: var(--wfc-effects-text-shadow);
+}
+
+wfc-animation-provider.dark[has-clouds] ~ .wfc-container .wfc-name,
+wfc-animation-provider.dark[has-clouds] ~ .wfc-container .wfc-current-secondary-value {
+  text-shadow: var(--wfc-effects-text-shadow-secondary);
+}
+
+wfc-animation-provider.dark[has-clouds] ~ .wfc-container .wfc-current-secondary-icon {
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5));
+}
+
 .wfc-current-attributes {
   display: flex;
   flex-direction: column;
@@ -268,6 +296,41 @@ ha-card {
   text-overflow: ellipsis;
   padding-left: var(--ha-space-4, 16px);
   flex: 1;
+}
+
+.wfc-current-attributes.wfc-compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--ha-space-5, 20px);
+  row-gap: var(--ha-space-1, 4px);
+  align-items: center;
+}
+
+.wfc-current-attributes.wfc-compact .wfc-current-attribute {
+  justify-content: flex-start;
+  gap: var(--ha-space-2, 8px);
+  min-width: 0;
+}
+
+.wfc-current-attributes.wfc-compact .wfc-current-attribute-icon {
+  padding-left: 0;
+  flex: 0 0 auto;
+}
+
+.wfc-current-attributes.wfc-compact .wfc-current-attribute-value {
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.wfc-current-attributes.wfc-compact .wfc-current-attribute:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.wfc-current-attributes.wfc-compact
+  .wfc-current-attribute:nth-child(even)
+  .wfc-current-attribute-value {
+  text-align: right;
 }
 
 .wfc-forecast-container {

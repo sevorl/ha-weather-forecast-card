@@ -8,7 +8,12 @@ import {
 import { HassEntity } from "home-assistant-js-websocket";
 import { ForecastAttribute } from "./data/weather";
 
-export type ForecastSubscription = Promise<() => void> | undefined;
+export type ForecastUnsubscribe = () => void | Promise<void>;
+export type ForecastSubscription =
+  | Promise<ForecastUnsubscribe | undefined>
+  | undefined;
+
+export type ForecastTypesOption = "both" | "daily" | "hourly";
 
 export type ForecastActionDetails = ActionHandlerDetail & {
   selectedForecast: ForecastAttribute;
@@ -39,6 +44,7 @@ export const WEATHER_EFFECTS = [
   "sky",
   "moon",
   "sun",
+  "cloud",
 ] as const;
 
 export type CurrentWeatherAttributes =
@@ -58,9 +64,22 @@ export const DEFAULT_CHART_ATTRIBUTE: ChartAttributes =
   "temperature_and_precipitation";
 
 export interface CurrentWeatherAttributeConfig {
-  name: CurrentWeatherAttributes;
+  // Optional: an item may be a known weather attribute (name) and/or a custom
+  // entity source (entity). At least one must be present to render. An
+  // entity-only item displays that entity's state as an arbitrary attribute.
+  name?: CurrentWeatherAttributes | (string & {});
   entity?: string;
+  label?: string;
+  icon?: string;
 }
+
+export const CURRENT_WEATHER_ATTRIBUTES_LAYOUTS = [
+  "default",
+  "compact",
+] as const;
+
+export type CurrentWeatherAttributesLayout =
+  (typeof CURRENT_WEATHER_ATTRIBUTES_LAYOUTS)[number];
 
 export type WeatherEffect = (typeof WEATHER_EFFECTS)[number];
 
@@ -110,8 +129,9 @@ export interface WeatherForecastCardCurrentConfig {
     | CurrentWeatherAttributeConfig
     | (CurrentWeatherAttributes | CurrentWeatherAttributeConfig)[];
   temperature_precision?: number;
-  secondary_info_attribute?: CurrentWeatherAttributes;
+  secondary_info_attribute?: CurrentWeatherAttributes | CurrentWeatherAttributeConfig;
   temperature_entity?: string;
+  attributes_layout?: CurrentWeatherAttributesLayout;
 }
 
 export interface WeatherForecastCardForecastActionConfig {
@@ -129,8 +149,10 @@ export interface WeatherForecastCardConfig {
   show_current?: boolean;
   show_forecast?: boolean;
   default_forecast?: "hourly" | "daily";
+  forecast_types?: ForecastTypesOption;
   icons_path?: string;
   show_condition_effects?: boolean | WeatherEffect[];
+  show_moon_phase?: boolean;
   current?: WeatherForecastCardCurrentConfig;
   forecast?: WeatherForecastCardForecastConfig;
   forecast_action?: WeatherForecastCardForecastActionConfig;
